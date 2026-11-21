@@ -9,7 +9,7 @@
 **Links**
 - Repository: https://github.com/ray3242/money-plays/tree/main/leash
 - Live demo: https://ray3242.github.io/leash/
-- Demo video: VIDEO_URL
+- Demo video: https://ray3242.github.io/leash/demo.mp4
 - Leash contract: EXPLORER_LEASH
 - PayeeRegistry contract: EXPLORER_REGISTRY
 
