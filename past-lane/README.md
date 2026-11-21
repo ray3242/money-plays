@@ -6,7 +6,7 @@ An HTML5 arcade racer where your own past laps are the traffic. After each lap, 
 - Three.js, no asset files: tracks, scenery, textures, sound and music are all generated in code.
 - Static build: `index.html` + `game.js` (about 520 KB). Keyboard and touch. Progress in `localStorage`.
 
-Play it: https://ray3242.github.io/money-plays/past-lane/play/ (`play/` is a committed copy of `dist/`).
+Play it: https://ray3242.github.io/past-lane/ (`play/` is a committed copy of `dist/`, served from the ray3242.github.io repo).
 
 ## Build
 
