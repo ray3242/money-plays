@@ -12,8 +12,11 @@ audio.setMuted(save.muted);
 // optional portal SDK bridge (only active when a portal SDK script is present)
 const portal = {
   sdk: () => (window.CrazyGames && window.CrazyGames.SDK) || null,
-  call(fn) { try { const s = this.sdk(); if (s && s.game && s.game[fn]) s.game[fn](); } catch (e) {} },
+  ready: null,
+  init() { const s = this.sdk(); if (s && s.init) this.ready = Promise.resolve().then(() => s.init()).then(() => s, () => null); },
+  call(fn) { if (this.ready) this.ready.then((s) => { try { if (s && s.game && s.game[fn]) s.game[fn](); } catch (e) {} }); },
 };
+portal.init();
 
 const renderer = new THREE.WebGLRenderer({ canvas: $('c'), antialias: true, powerPreference: 'high-performance' });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
