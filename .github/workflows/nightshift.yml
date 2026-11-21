@@ -1,0 +1,21 @@
+name: nightshift
+on:
+  push:
+    branches: [main]
+    paths: ["nightshift/**", ".github/workflows/nightshift.yml"]
+  pull_request:
+    paths: ["nightshift/**", ".github/workflows/nightshift.yml"]
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: nightshift
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: python -m unittest discover -s tests -t . -v
