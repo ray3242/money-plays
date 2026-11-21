@@ -1,0 +1,10 @@
+node_modules/
+dist/
+demo/
+contracts/out/
+contracts/cache/
+contracts/broadcast/
+.env
+.env.*
+*.log
+contracts/lib/
