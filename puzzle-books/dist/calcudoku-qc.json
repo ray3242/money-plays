@@ -1,0 +1,128 @@
+{
+ "book": "calcudoku",
+ "title": "Large Print Calcudoku",
+ "subtitle": "100 Math Logic Puzzles from 4 \u00d7 4 to 8 \u00d7 8",
+ "author": "Northgrid Puzzles",
+ "pages": 114,
+ "trim": "8.5 x 11 in",
+ "bleed": "interior: no bleed; cover: 0.125 in",
+ "paper": "white, black ink",
+ "spine_in": 0.2567,
+ "cover_size_in": [
+  17.507,
+  11.25
+ ],
+ "checks": [
+  {
+   "check": "puzzle count",
+   "ok": true,
+   "detail": "101 of 101"
+  },
+  {
+   "check": "every puzzle has exactly one solution (independent CP-SAT proof)",
+   "ok": true,
+   "detail": "101 of 101 proven unique"
+  },
+  {
+   "check": "no duplicate puzzles",
+   "ok": true,
+   "detail": "101 distinct clue sets"
+  },
+  {
+   "check": "no duplicate solutions",
+   "ok": true,
+   "detail": "101 distinct solutions"
+  },
+  {
+   "check": "interior opens, page count matches layout",
+   "ok": true,
+   "detail": "114 pages"
+  },
+  {
+   "check": "page count within KDP 24 to 828 and even",
+   "ok": true,
+   "detail": "114"
+  },
+  {
+   "check": "every page is 8.5 x 11 in trim",
+   "ok": true,
+   "detail": "{(612.0, 792.0)}"
+  },
+  {
+   "check": "all fonts embedded",
+   "ok": true,
+   "detail": "3 embedded TrueType subsets"
+  },
+  {
+   "check": "smallest text is at least 7 pt",
+   "ok": true,
+   "detail": "7.6 pt"
+  },
+  {
+   "check": "no raster images (all vector, so no 300 DPI concern)",
+   "ok": true,
+   "detail": "0 images"
+  },
+  {
+   "check": "gutter margin at least 0.375 in",
+   "ok": true,
+   "detail": "smallest 0.875 in"
+  },
+  {
+   "check": "outside margin at least 0.25 in",
+   "ok": true,
+   "detail": "smallest 0.624 in"
+  },
+  {
+   "check": "top and bottom margin at least 0.25 in",
+   "ok": true,
+   "detail": "smallest 0.447 in"
+  },
+  {
+   "check": "each puzzle page carries its puzzle number",
+   "ok": true,
+   "detail": "all present"
+  },
+  {
+   "check": "answer key lists every puzzle",
+   "ok": true,
+   "detail": "all present"
+  },
+  {
+   "check": "file under 650 MB",
+   "ok": true,
+   "detail": "0.25 MB"
+  },
+  {
+   "check": "cover is a single page",
+   "ok": true,
+   "detail": "1"
+  },
+  {
+   "check": "cover size = 2 x trim + spine + bleed",
+   "ok": true,
+   "detail": "17.507 x 11.250 in, spine 0.257 in for 114 pages"
+  },
+  {
+   "check": "all cover fonts embedded",
+   "ok": true,
+   "detail": "embedded"
+  },
+  {
+   "check": "cover text inside safe zones, clear of barcode area and folds",
+   "ok": true,
+   "detail": "ok"
+  },
+  {
+   "check": "spine text only when the book has more than 79 pages",
+   "ok": true,
+   "detail": "1 spine text spans, 114 pages"
+  },
+  {
+   "check": "background artwork fills the bleed",
+   "ok": true,
+   "detail": "corner colours [(252, 198, 63), (252, 198, 63), (252, 198, 63), (252, 198, 63)]"
+  }
+ ],
+ "passed": true
+}
