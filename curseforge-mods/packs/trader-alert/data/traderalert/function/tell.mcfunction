@@ -1,0 +1,4 @@
+# As a player in range of a newly arrived trader
+function traderalert:measure
+tellraw @s [{"text":"[Trader Alert] ","color":"aqua"},{"text":"A Wandering Trader arrived at ","color":"white"},{"score":{"name":"#x","objective":"traderalert.v"},"color":"yellow"},{"text":" "},{"score":{"name":"#y","objective":"traderalert.v"},"color":"yellow"},{"text":" "},{"score":{"name":"#z","objective":"traderalert.v"},"color":"yellow"},{"text":" (","color":"gray"},{"score":{"name":"#d","objective":"traderalert.v"},"color":"white"},{"text":" blocks ","color":"gray"},{"nbt":"ns","storage":"traderalert:tmp","color":"gray"},{"nbt":"ew","storage":"traderalert:tmp","color":"gray"},{"text":")","color":"gray"}]
+execute if score #sound traderalert.cfg matches 1 at @s run playsound minecraft:entity.wandering_trader.yes neutral @s ~ ~ ~ 1 1 1

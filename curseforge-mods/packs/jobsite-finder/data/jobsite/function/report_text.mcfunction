@@ -1,0 +1,6 @@
+tellraw @s [{"text":"[Job Site Finder] ","color":"green"},{"score":{"name":"#total","objective":"jobsite.v"},"color":"white"},{"text":" villagers within 48 blocks","color":"white"}]
+tellraw @s [{"text":"  \u25a0 ","color":"green"},{"score":{"name":"#job","objective":"jobsite.v"},"color":"white"},{"text":" with a workstation (green line)","color":"gray"}]
+tellraw @s [{"text":"  \u25a0 ","color":"aqua"},{"score":{"name":"#bed","objective":"jobsite.v"},"color":"white"},{"text":" with a bed (blue line)","color":"gray"}]
+tellraw @s [{"text":"  \u25a0 ","color":"red"},{"score":{"name":"#nojob","objective":"jobsite.v"},"color":"white"},{"text":" without a workstation (red puff), including ","color":"gray"},{"score":{"name":"#nitwit","objective":"jobsite.v"},"color":"white"},{"text":" nitwits","color":"gray"}]
+tellraw @s [{"text":"  \u25a0 ","color":"gold"},{"score":{"name":"#nobed","objective":"jobsite.v"},"color":"white"},{"text":" without a bed (orange puff)","color":"gray"}]
+tellraw @s [{"text":"  Overlay on for ","color":"dark_gray"},{"score":{"name":"#secs","objective":"jobsite.v"},"color":"dark_gray"},{"text":" seconds. Run /trigger jobsite again to turn it off.","color":"dark_gray"}]
