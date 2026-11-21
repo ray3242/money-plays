@@ -1,4 +1,5 @@
 """End-to-end test against a mock marketplace and a local test site. Run: python3 -m unittest -v"""
+import gzip
 import json
 import os
 import socket
@@ -11,7 +12,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "agent"))
 import run  # noqa: E402
-from audit import UnsafeUrl, audit, check_public, extract_url  # noqa: E402
+from audit import UnsafeUrl, audit, blocks_everything, check_public, extract_url  # noqa: E402
 from market import Market  # noqa: E402
 
 PAGE = b"""<!doctype html><html><head><title>Shop</title></head><body>
@@ -34,6 +35,27 @@ class Site(BaseHTTPRequestHandler):
             self.end_headers()
             if self.command == "GET":
                 self.wfile.write(PAGE)
+        elif self.path == "/gz":
+            html = b"<html lang='en'><head><title>Compressed page</title></head><body>" + b"<p>word</p>" * 3000 + b"</body></html>"
+            self.send_response(200)
+            self.send_header("Content-Type", "text/html")
+            if "gzip" in self.headers.get("Accept-Encoding", ""):
+                html = gzip.compress(html)
+                self.send_header("Content-Encoding", "gzip")
+            self.end_headers()
+            if self.command == "GET":
+                self.wfile.write(html)
+        elif self.path in ("/based", "/forms"):
+            self.send_response(200)
+            self.send_header("Content-Type", "text/html")
+            self.end_headers()
+            if self.command == "GET":
+                self.wfile.write(b'<html><head><title>T</title><base href="/assets/"></head><body><a href="ok">ok</a>'
+                                 b'<label>Email <input name="e"></label><label>Size <select name="s"></select></label>'
+                                 b'<label>Note <textarea name="n"></textarea></label><label for="x">X</label><input id="x"></body></html>')
+        elif self.path == "/assets/ok":
+            self.send_response(200)
+            self.end_headers()
         elif self.path == "/badlink":
             self.send_response(200)
             self.send_header("Content-Type", "text/html")
@@ -169,6 +191,36 @@ class AgentTest(unittest.TestCase):
         r["latestMessage"] = {"body": f"wrong page, use {self.site_url}/ok"}
         run.handle(self.m, r, allow_private=True)
         self.assertIn("/ok", self.s["submitted"]["a5"])
+
+    def test_buyer_correction_before_first_delivery_wins(self):
+        r = row("a6", "audit https://old.example")
+        r["latestMessage"] = {"body": f"Correction: audit {self.site_url}/ok", "senderSide": "buyer"}
+        run.handle(self.m, r, allow_private=True)
+        self.assertIn("/ok", self.s["submitted"]["a6"])
+
+    def test_worker_message_does_not_override_brief(self):
+        r = row("a7", f"audit {self.site_url}/ok")
+        r["latestMessage"] = {"body": "I will audit https://elsewhere.example", "senderSide": "worker"}
+        run.handle(self.m, r, allow_private=True)
+        self.assertIn("/ok", self.s["submitted"]["a7"])
+
+    def test_compressed_page_is_decoded_and_not_flagged(self):
+        md, _ = audit(self.site_url + "/gz", allow_private=True)
+        self.assertNotIn("sent uncompressed", md)
+        self.assertIn("| Compression | gzip", md)
+        self.assertIn("Compressed page", md)
+
+    def test_base_href_and_wrapping_labels(self):
+        md, _ = audit(self.site_url + "/based", allow_private=True)
+        self.assertIn("| Links found / checked | 1 / 1 |", md)
+        self.assertNotIn("checked links are broken", md)
+        self.assertNotIn("have no label", md)
+
+    def test_robots_groups(self):
+        self.assertFalse(blocks_everything("User-agent: *\nDisallow: /admin\n\nUser-agent: BadBot\nDisallow: /\n"))
+        self.assertTrue(blocks_everything("User-agent: BadBot\nUser-agent: *\nDisallow: /\n"))
+        self.assertTrue(blocks_everything("user-agent: *  # all\ndisallow: /\n"))
+        self.assertFalse(blocks_everything("User-agent: *\nDisallow:\n"))
 
     def test_bids_only_on_matching_jobs(self):
         self.s["board"] = [

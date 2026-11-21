@@ -34,10 +34,11 @@ def brief_url(m, row):
     """URL from the job brief, else from the buyer's messages on the thread (newest first)."""
     job = row.get("job") or {}
     url = extract_url(f"{job.get('description', '')}\n{job.get('title', '')}")
-    latest = (row.get("latestMessage") or {}).get("body")
+    latest = row.get("latestMessage") or {}
     a = row["assignment"]
-    if a.get("submittedAt") and latest:  # request-changes: a new URL in the feedback wins
-        url = extract_url(latest) or url
+    side = latest.get("senderSide") or ("buyer" if a.get("submittedAt") else None)
+    if side == "buyer" and latest.get("body"):  # a URL in the buyer's newest message wins, first run or rework
+        url = extract_url(latest["body"]) or url
     if url:
         return url, False
     asked = False

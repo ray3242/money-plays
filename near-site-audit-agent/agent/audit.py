@@ -9,6 +9,7 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
+import zlib
 from concurrent.futures import ThreadPoolExecutor
 from html.parser import HTMLParser
 
@@ -152,22 +153,72 @@ def _fetch(url, allow_private, method, limit):
     check_public(url, allow_private)
     red = _Redirects(allow_private)
     opener = urllib.request.build_opener(red, *_handlers(allow_private))
-    req = urllib.request.Request(url, method=method, headers={"User-Agent": UA, "Accept": "*/*"})
+    req = urllib.request.Request(url, method=method, headers={"User-Agent": UA, "Accept": "*/*",
+                                                              "Accept-Encoding": "gzip, deflate"})
     t0 = time.time()
     try:
         with opener.open(req, timeout=TIMEOUT) as r:
-            body = b""
+            enc = (r.headers.get("Content-Encoding") or "").strip().lower()
+            dec = _decoder(enc)
+            body, wire = b"", 0
             while method == "GET" and len(body) <= limit and time.time() - t0 < FETCH_DEADLINE:
-                chunk = r.read1(min(65536, limit + 1 - len(body)))
+                chunk = r.read1(65536)
                 if not chunk:
                     break
-                body += chunk
+                wire += len(chunk)
+                body += _inflate(dec, chunk, limit + 1 - len(body)) if dec else chunk
             return {"status": r.status, "url": r.geturl(), "headers": {k.lower(): v for k, v in r.headers.items()},
                     "body": body[:limit], "truncated": len(body) > limit, "seconds": time.time() - t0,
-                    "redirects": red.chain}
+                    "redirects": red.chain, "wire_bytes": wire}
     except urllib.error.HTTPError as e:
         return {"status": e.code, "url": url, "headers": {k.lower(): v for k, v in e.headers.items()},
-                "body": b"", "truncated": False, "seconds": time.time() - t0, "redirects": red.chain}
+                "body": b"", "truncated": False, "seconds": time.time() - t0, "redirects": red.chain, "wire_bytes": 0}
+
+
+def _decoder(enc):
+    if enc in ("gzip", "x-gzip"):
+        return zlib.decompressobj(16 + zlib.MAX_WBITS)
+    if enc == "deflate":
+        return zlib.decompressobj()
+    return None
+
+
+def _inflate(dec, chunk, room):
+    """Decompress at most room bytes, so a compression bomb cannot exhaust memory."""
+    try:
+        return dec.decompress(chunk, max(room, 1))
+    except zlib.error:  # corrupt or mislabelled body: keep what was decoded so far
+        return b""
+
+
+def parse_robots(text):
+    """Group robots.txt into [(agents, [(field, value)])] following RFC 9309 grouping."""
+    groups, cur, in_agents = [], None, False
+    for raw in text.splitlines():
+        line = raw.split("#", 1)[0].strip()
+        if ":" not in line:
+            continue
+        field, value = (x.strip() for x in line.split(":", 1))
+        field = field.lower()
+        if field == "user-agent":
+            if not in_agents:
+                cur = ([], [])
+                groups.append(cur)
+                in_agents = True
+            cur[0].append(value.lower())
+        elif field in ("allow", "disallow"):
+            if cur is not None:
+                cur[1].append((field, value))
+            in_agents = False
+    return groups
+
+
+def blocks_everything(text):
+    """True when the rules for generic crawlers (the `*` group) disallow the root path."""
+    rules = [r for agents, rs in parse_robots(text) if "*" in agents for r in rs]
+    disallow_root = any(f == "disallow" and v == "/" for f, v in rules)
+    allow_root = any(f == "allow" and v in ("/", "/$") for f, v in rules)
+    return disallow_root and not allow_root
 
 
 class _Page(HTMLParser):
@@ -188,6 +239,8 @@ class _Page(HTMLParser):
         self.input_ids = []
         self.mixed = []
         self.words = 0
+        self.base = None
+        self._labels = 0
         self._stack = []
         self._skip = 0
 
@@ -228,11 +281,16 @@ class _Page(HTMLParser):
                 self._res(a["src"])
             if a.get("type", "").lower() == "application/ld+json":
                 self.jsonld += 1
-        elif tag == "label" and a.get("for"):
-            self.labels_for.add(a["for"])
+        elif tag == "base" and a.get("href") and self.base is None:
+            self.base = a["href"].strip()
+        elif tag == "label":
+            self._labels += 1
+            if a.get("for"):
+                self.labels_for.add(a["for"])
         elif tag in ("input", "select", "textarea"):
             if a.get("type", "").lower() not in ("hidden", "submit", "button", "image", "reset"):
-                self.input_ids.append((a.get("id"), bool(a.get("aria-label") or a.get("aria-labelledby") or a.get("title"))))
+                named = bool(self._labels or a.get("aria-label") or a.get("aria-labelledby") or a.get("title"))
+                self.input_ids.append((a.get("id"), named))
 
     def _res(self, src):
         if src and src.lower().startswith("http://"):
@@ -245,6 +303,8 @@ class _Page(HTMLParser):
             self._stack.remove("title")
         if tag in ("h1", "h2", "h3", "h4", "h5", "h6") and "h" in self._stack:
             self._stack.remove("h")
+        if tag == "label" and self._labels:
+            self._labels -= 1
 
     def handle_data(self, data):
         if "title" in self._stack:
@@ -366,7 +426,7 @@ def audit(url, allow_private=False):
         r = fetch(origin + "/robots.txt", allow_private, limit=200_000)
         robots = r["status"] == 200 and b"<html" not in r["body"][:500].lower()
         rtxt = r["body"].decode("utf-8", "replace") if robots else ""
-        if robots and re.search(r"(?im)^user-agent:\s*\*\s*$[\s\S]*?^disallow:\s*/\s*$", rtxt):
+        if robots and blocks_everything(rtxt):
             add("High", "SEO", "robots.txt blocks all crawlers from the whole site (`Disallow: /`).", "Remove the rule unless the site is meant to stay out of search.")
         sm = re.findall(r"(?im)^sitemap:\s*(\S+)", rtxt)
         r2 = fetch(sm[0] if sm else origin + "/sitemap.xml", allow_private, limit=200_000)
@@ -398,6 +458,7 @@ def audit(url, allow_private=False):
     # --- performance
     size = len(page["body"])
     enc = h.get("content-encoding", "")
+    wire = page.get("wire_bytes", size)
     if size > 500_000:
         add("Medium", "Performance", f"The HTML alone is {size // 1024} KB.", "Trim inline scripts, styles and data; lazy-load what is below the fold.")
     if not enc and size > 20_000:
@@ -414,9 +475,13 @@ def audit(url, allow_private=False):
 
     # --- links
     seen, targets = set(), []
+    try:
+        base = urllib.parse.urljoin(final, doc.base) if doc.base else final
+    except ValueError:
+        base = final
     for href in doc.links:
         try:
-            u = urllib.parse.urljoin(final, href.strip()).split("#")[0]
+            u = urllib.parse.urljoin(base, href.strip()).split("#")[0]
         except ValueError:  # malformed href such as http://[bad
             continue
         if u.startswith(("http://", "https://")) and u not in seen and u != final:
@@ -454,7 +519,7 @@ def audit(url, allow_private=False):
             f"| TLS certificate days left | {cert_days if cert_days is not None else 'n/a'} |",
             f"| Server response time | {page['seconds']:.2f} s |",
             f"| HTML size | {size / 1024:.0f} KB{' (cut at 3 MB)' if page['truncated'] else ''} |",
-            f"| Compression | {enc or 'none'} |",
+            f"| Compression | {enc + f' ({wire / 1024:.0f} KB sent)' if enc else 'none'} |",
             f"| Title | {cell(title) or 'none'} ({len(title)} chars) |",
             f"| Meta description | {len(desc)} chars |",
             f"| Headings | {len(h1)} h1, {len(doc.headings)} total |",
