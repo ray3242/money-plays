@@ -60,7 +60,9 @@ class LLMBrain(PolicyBrain):
                 out = {"type": "act", "action": step["action"], "args": step.get("args") or {}, "why": step.get("why", ""), "is_fix": True}
             else:
                 return fallback
-            if fallback.get("type") == "act" and (out["type"] != "act" or (out["action"], out["args"]) != (fallback["action"], fallback["args"])):
+            if fallback.get("type") == out["type"] == "act" and (out["action"], out["args"]) == (fallback["action"], fallback["args"]):
+                out = dict(fallback, why=out["why"] or fallback.get("why", ""))  # keep the policy's citations so reuse is attributed
+            elif fallback.get("type") == "act":
                 self.queue.insert(0, fallback)  # the model chose something else: keep the policy's step pending
             self.transcript.append(f"STEP: {json.dumps(out)}")
             return out
