@@ -323,7 +323,7 @@ function render() {
   $("#bar").innerHTML = `<span>Network <b>${chainId === aevumTestnet.id ? "QDay Aevum Testnet" : `chain ${chainId}`}</b></span>
     <span>Leash ${addrLink(d!.leash)}</span><span>Payee registry ${addrLink(d!.registry)}</span><span>${TOKEN_SYMBOL} ${addrLink(d!.token)}</span>
     ${chainId === aevumTestnet.id ? '<span><a href="https://faucet.qday.info/en" target="_blank" rel="noopener">Faucet</a></span>' : ""}
-    <span>${usingSharedKeys ? 'Shared demo wallets (<a href="${freshHref()}">use private ones</a>)' : "Wallets are throwaway test keys kept in this browser"}</span>`;
+    <span>${usingSharedKeys ? `Shared demo wallets (<a href="${freshHref()}">use private ones</a>)` : "Wallets are throwaway test keys kept in this browser"}</span>`;
 }
 
 function freshHref(): string {
