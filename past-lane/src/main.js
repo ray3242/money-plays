@@ -241,7 +241,7 @@ function step() {
     const solid = g.age > 1.5 && g.seam <= 0;
     if (d < 14) {
       if (solid) g.minD = Math.min(g.minD, d);
-      if (solid && d < 2.3 && invuln <= 0 && !g.hit) crash(g);
+      if (solid && d < 2.3 && invuln <= 0 && !g.hit) { crash(g); if (mode !== 'race') return; }
     } else {
       if (g.minD < 5.2 && !g.hit) nearMiss(g.minD);
       g.minD = 1e9; g.hit = false;
