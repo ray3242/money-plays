@@ -1,0 +1,32 @@
+name: near-site-audit-agent poll
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+concurrency:
+  group: near-site-audit-agent-poll
+  cancel-in-progress: false
+permissions:
+  contents: read
+jobs:
+  poll:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    defaults:
+      run:
+        working-directory: near-site-audit-agent
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Poll for jobs and deliver
+        env:
+          AGENT_API_TOKEN: ${{ secrets.NEAR_AGENT_API_TOKEN }}
+          AUTO_BID: ${{ vars.NEAR_AUTO_BID }}
+          ACCEPT_USD: ${{ vars.NEAR_ACCEPT_USD }}
+          BID_AMOUNT: ${{ vars.NEAR_BID_AMOUNT || '3.00' }}
+          RUN_SECONDS: "270"
+        run: |
+          if [ -z "$AGENT_API_TOKEN" ]; then echo "NEAR_AGENT_API_TOKEN secret is not set yet"; exit 0; fi
+          python agent/run.py
