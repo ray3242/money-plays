@@ -1,0 +1,40 @@
+{
+  "config": {
+    "search": 8.0,
+    "step": 0.5,
+    "target": "edge+",
+    "sigma": 2.0,
+    "patch": 2,
+    "patch_spacing": 3.0,
+    "lateral": 1.0,
+    "smooth_lambda": 0.3,
+    "smooth_trunc": 3.0,
+    "post_sigma": 1.0,
+    "normal_smooth": 1.5,
+    "tile": 16,
+    "iterations": 2,
+    "scale": 1.0
+  },
+  "results": [
+    {
+      "vertices": 40556,
+      "perturbation_rms_vox": 1.4449805838742575,
+      "perturbation_max_vox": 5.15013187358409,
+      "residual_rms_vox": 1.098217189101418,
+      "residual_median_abs_vox": 0.21364031999183555,
+      "within_1_vox": 0.905932537725614,
+      "within_2_vox": 0.9555922674820002,
+      "recovered_fraction": 0.42236639563922396
+    },
+    {
+      "vertices": 40555,
+      "perturbation_rms_vox": 2.4082951554783536,
+      "perturbation_max_vox": 8.58355312264015,
+      "residual_rms_vox": 1.9156970869042467,
+      "residual_median_abs_vox": 0.3418196052886148,
+      "within_1_vox": 0.8237948465047467,
+      "within_2_vox": 0.9097521883861422,
+      "recovered_fraction": 0.3672469407538822
+    }
+  ]
+}

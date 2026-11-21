@@ -1,0 +1,32 @@
+{
+  "scan_9.362um vs scan_2.399um": {
+    "vertices": 40556,
+    "pearson_r": 0.928,
+    "median_abs_diff_um": 2.86,
+    "within_10um": 0.964,
+    "offset_rms_um": [
+      17.8,
+      19.6
+    ]
+  },
+  "scan_9.362um vs scan_1.129um": {
+    "vertices": 40300,
+    "pearson_r": 0.874,
+    "median_abs_diff_um": 5.02,
+    "within_10um": 0.902,
+    "offset_rms_um": [
+      17.7,
+      19.9
+    ]
+  },
+  "scan_2.399um vs scan_1.129um": {
+    "vertices": 40310,
+    "pearson_r": 0.913,
+    "median_abs_diff_um": 2.86,
+    "within_10um": 0.954,
+    "offset_rms_um": [
+      19.5,
+      19.9
+    ]
+  }
+}

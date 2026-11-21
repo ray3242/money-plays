@@ -1,0 +1,41 @@
+{
+  "before": {
+    "edge_strength_mean": 5.415814773141462,
+    "intensity_mean": 88.6860889929733
+  },
+  "after": {
+    "edge_strength_mean": 6.067502874672951,
+    "intensity_mean": 85.11054373634072
+  },
+  "offset": {
+    "median": 1.2925910858338505,
+    "mean_abs": 1.7405882245373618,
+    "p95_abs": 4.21046921759601,
+    "moved_more_than_1_vox": 0.6452741255271645,
+    "moved_more_than_2_vox": 0.36732820640039693
+  },
+  "vertices": 40310,
+  "config": {
+    "search": 8.0,
+    "step": 0.5,
+    "target": "edge+",
+    "sigma": 2.0,
+    "patch": 2,
+    "patch_spacing": 3.0,
+    "lateral": 1.0,
+    "smooth_lambda": 0.3,
+    "smooth_trunc": 3.0,
+    "post_sigma": 1.0,
+    "normal_smooth": 1.5,
+    "tile": 16,
+    "scale": 0.125
+  },
+  "seconds": 122.5,
+  "downloaded_gb": 5.646,
+  "section_rows": [
+    47,
+    70,
+    92,
+    120
+  ]
+}
