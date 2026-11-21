@@ -45,6 +45,17 @@ def perturbation_recovery(surf: TifXYZ, volume, cfg: SnapConfig, rms: float = 2.
     resid = (d * base.normals).sum(-1)
     m = np.isfinite(base.offset) & np.isfinite(res.offset) & np.isfinite(resid)
     r, f = resid[m], field[m]
+    if not m.any():
+        keys = (
+            "perturbation_rms_vox",
+            "perturbation_max_vox",
+            "residual_rms_vox",
+            "residual_median_abs_vox",
+            "within_1_vox",
+            "within_2_vox",
+            "recovered_fraction",
+        )
+        return {"vertices": 0, **{k: None for k in keys}}, resid, field
     return (
         {
             "vertices": int(m.sum()),

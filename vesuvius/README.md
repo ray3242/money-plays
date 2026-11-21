@@ -75,11 +75,18 @@ The snapped surface is pushed off the sheet by a smooth random field along the n
 
 So most vertices come back to the same place to a fraction of a voxel, and a tail of roughly 4-9% lock onto a different edge. That tail is the main limitation, see below.
 
+### 3. Fibres stay visible on the snapped surface
+
+![Flattened texture before and after snapping](docs/texture_before_after_9.362um.jpg)
+
+Flattened texture of the same grid window (`tifxyz-snap render --upsample 8 --window 40 110 20 160 --half-thickness 1`). Horizontal and vertical papyrus fibres are visible on the snapped surface and the texture does not break up, which it would if vertices had jumped to a neighbouring wrap. The input was already close to the sheet, so the visual change is modest; the quantitative evidence is tests 1 and 2.
+
 ## Limitations
 
 - It moves vertices only along the normal, by at most `--search` voxels. It fixes a surface that is slightly off the sheet; it does not fix a surface on the wrong wrap, and in tightly compressed regions a large perturbation can make it jump to the neighbouring sheet (the tail in the table above).
 - There is no manually verified ground truth here. The evidence is cross-scan agreement and self-consistency, not error against a hand-checked surface, and I have not measured the effect on downstream ink detection.
 - Tested on one segment of one scroll (PHerc. 814) at about 9 um voxels. Finer levels work but download far more data.
+- Rendering a whole segment needs about 2 GB of RAM (points are sampled block by block, so memory does not grow with the segment's bounding box).
 - Reads Zarr v2 only (the format of the public bucket), codecs supported by `numcodecs`.
 - `snap_confidence.tif` is a relative cost margin, not a calibrated probability.
 
@@ -89,7 +96,7 @@ So most vertices come back to the same place to a fraction of a voxel, and a tai
 pip install -e ".[dev]" && pytest && ruff check .
 ```
 
-The 11 tests use a small synthetic sheet with known ground truth (recovery of a biased surface, automatic face detection, holes, empty space, I/O, the CLI end to end). They are regression tests only; the usefulness claims above rest on the real-scroll runs.
+The 17 tests use a small synthetic sheet with known ground truth (recovery of a biased surface, automatic face detection, holes, empty and uniform space, I/O including standalone Zarr arrays, the CLI end to end). They are regression tests only; the usefulness claims above rest on the real-scroll runs.
 
 ## Provenance
 
