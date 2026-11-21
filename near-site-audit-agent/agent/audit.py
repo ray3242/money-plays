@@ -1,8 +1,10 @@
 """Deterministic website audit: fetch one page, inspect it, return a Markdown report."""
+import http.client
 import ipaddress
 import re
 import socket
 import ssl
+import threading
 import time
 import urllib.error
 import urllib.parse
@@ -14,8 +16,9 @@ UA = "SiteAuditAgent/1.0 (+https://market.near.ai)"
 MAX_BYTES = 3_000_000
 MAX_LINKS = 40
 TIMEOUT = 15
-URL_RE = re.compile(r"https?://[^\s<>\"')\]]+", re.I)
-BARE_RE = re.compile(r"\b((?:[a-z0-9-]+\.)+[a-z]{2,})(/[^\s<>\"')\]]*)?", re.I)
+FETCH_DEADLINE = 40  # whole request, so a slow-dripping server cannot hold the worker
+URL_RE = re.compile(r"https?://[^\s<>\"'\]]+", re.I)
+BARE_RE = re.compile(r"(?<![\w@.-])((?:[a-z0-9-]+\.)+[a-z]{2,})(?![\w@-])(:\d+)?([/?#][^\s<>\"'\]]*)?", re.I)
 
 SECURITY_HEADERS = {
     "strict-transport-security": "Send it so browsers use HTTPS on every return visit.",
@@ -37,11 +40,18 @@ def extract_url(text):
         return None
     m = URL_RE.search(text)
     if m:
-        return m.group(0).rstrip(".,;:!?")
+        return _trim(m.group(0))
     m = BARE_RE.search(text)
     if m:
-        return "https://" + m.group(0).rstrip(".,;:!?")
+        return "https://" + _trim(m.group(0))
     return None
+
+
+def _trim(u):
+    """Drop sentence punctuation and any closing bracket the URL itself never opened."""
+    while u and (u[-1] in ".,;:!?" or (u[-1] == ")" and u.count(")") > u.count("("))):
+        u = u[:-1]
+    return u
 
 
 def check_public(url, allow_private=False):
@@ -61,6 +71,52 @@ def check_public(url, allow_private=False):
             raise UnsafeUrl(f"{p.hostname} resolves to a non-public address")
 
 
+def _connect(host, port, timeout, allow_private):
+    """Resolve once, vet every address, and connect to a vetted address (no second DNS lookup)."""
+    infos = socket.getaddrinfo(host, port, type=socket.SOCK_STREAM)
+    if not allow_private:
+        for info in infos:
+            if not ipaddress.ip_address(info[4][0]).is_global:
+                raise UnsafeUrl(f"{host} resolves to a non-public address")
+    err = None
+    for info in infos:
+        try:
+            return socket.create_connection(info[4][:2], timeout)
+        except OSError as e:
+            err = e
+    raise err or OSError(f"could not connect to {host}")
+
+
+class _Http(http.client.HTTPConnection):
+    allow_private = False
+
+    def connect(self):
+        self.sock = _connect(self.host, self.port, self.timeout, self.allow_private)
+
+
+class _Https(http.client.HTTPSConnection):
+    allow_private = False
+
+    def connect(self):
+        sock = _connect(self.host, self.port, self.timeout, self.allow_private)
+        self.sock = ssl.create_default_context().wrap_socket(sock, server_hostname=self.host)
+
+
+def _handlers(allow_private):
+    http_cls = type("C", (_Http,), {"allow_private": allow_private})
+    https_cls = type("S", (_Https,), {"allow_private": allow_private})
+
+    class H(urllib.request.HTTPHandler):
+        def http_open(self, req):
+            return self.do_open(http_cls, req)
+
+    class S(urllib.request.HTTPSHandler):
+        def https_open(self, req):
+            return self.do_open(https_cls, req)
+
+    return [urllib.request.ProxyHandler({}), H(), S()]
+
+
 class _Redirects(urllib.request.HTTPRedirectHandler):
     def __init__(self, allow_private):
         self.allow_private = allow_private
@@ -73,14 +129,39 @@ class _Redirects(urllib.request.HTTPRedirectHandler):
 
 
 def fetch(url, allow_private=False, method="GET", limit=MAX_BYTES):
+    """_fetch with a hard wall-clock limit; the worker thread is abandoned if the server stalls."""
+    box = {}
+
+    def work():
+        try:
+            box["ok"] = _fetch(url, allow_private, method, limit)
+        except BaseException as e:
+            box["err"] = e
+
+    t = threading.Thread(target=work, daemon=True)
+    t.start()
+    t.join(FETCH_DEADLINE)
+    if "err" in box:
+        raise box["err"]
+    if "ok" not in box:
+        raise TimeoutError(f"no complete response within {FETCH_DEADLINE} s")
+    return box["ok"]
+
+
+def _fetch(url, allow_private, method, limit):
     check_public(url, allow_private)
     red = _Redirects(allow_private)
-    opener = urllib.request.build_opener(red)
+    opener = urllib.request.build_opener(red, *_handlers(allow_private))
     req = urllib.request.Request(url, method=method, headers={"User-Agent": UA, "Accept": "*/*"})
     t0 = time.time()
     try:
         with opener.open(req, timeout=TIMEOUT) as r:
-            body = r.read(limit + 1) if method == "GET" else b""
+            body = b""
+            while method == "GET" and len(body) <= limit and time.time() - t0 < FETCH_DEADLINE:
+                chunk = r.read1(min(65536, limit + 1 - len(body)))
+                if not chunk:
+                    break
+                body += chunk
             return {"status": r.status, "url": r.geturl(), "headers": {k.lower(): v for k, v in r.headers.items()},
                     "body": body[:limit], "truncated": len(body) > limit, "seconds": time.time() - t0,
                     "redirects": red.chain}
@@ -187,10 +268,10 @@ def _check_link(args):
         return url, None, f"{type(e).__name__}: {getattr(e, 'reason', e)}"
 
 
-def _cert_days(host, port):
+def _cert_days(host, port, allow_private=False):
     try:
         ctx = ssl.create_default_context()
-        with socket.create_connection((host, port), timeout=TIMEOUT) as s:
+        with _connect(host, port, TIMEOUT, allow_private) as s:
             with ctx.wrap_socket(s, server_hostname=host) as t:
                 exp = ssl.cert_time_to_seconds(t.getpeercert()["notAfter"])
                 return int((exp - time.time()) // 86400)
@@ -224,7 +305,7 @@ def audit(url, allow_private=False):
         add("High", "Availability", f"The page answers with HTTP {page['status']}.", "Restore the page or redirect it to a working URL.")
     if fp.scheme != "https":
         add("High", "Security", "The page is served over plain HTTP.", "Serve the site over HTTPS and redirect HTTP to it.")
-    cert_days = _cert_days(fp.hostname, fp.port or 443) if fp.scheme == "https" else None
+    cert_days = _cert_days(fp.hostname, fp.port or 443, allow_private) if fp.scheme == "https" else None
     if cert_days is not None and cert_days < 21:
         add("High", "Security", f"The TLS certificate expires in {cert_days} days.", "Renew the certificate or fix automatic renewal.")
     http_upgrade = None
@@ -334,7 +415,10 @@ def audit(url, allow_private=False):
     # --- links
     seen, targets = set(), []
     for href in doc.links:
-        u = urllib.parse.urljoin(final, href.strip()).split("#")[0]
+        try:
+            u = urllib.parse.urljoin(final, href.strip()).split("#")[0]
+        except ValueError:  # malformed href such as http://[bad
+            continue
         if u.startswith(("http://", "https://")) and u not in seen and u != final:
             seen.add(u)
             targets.append(u)

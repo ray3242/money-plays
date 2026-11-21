@@ -1,9 +1,12 @@
 """End-to-end test against a mock marketplace and a local test site. Run: python3 -m unittest -v"""
 import json
 import os
+import socket
 import sys
 import threading
+import time
 import unittest
+from unittest import mock
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "agent"))
@@ -31,6 +34,12 @@ class Site(BaseHTTPRequestHandler):
             self.end_headers()
             if self.command == "GET":
                 self.wfile.write(PAGE)
+        elif self.path == "/badlink":
+            self.send_response(200)
+            self.send_header("Content-Type", "text/html")
+            self.end_headers()
+            if self.command == "GET":
+                self.wfile.write(b'<html><head><title>T</title></head><body><a href="http://[bad">x</a><a href="/ok">ok</a></body></html>')
         else:
             self.send_response(404)
             self.end_headers()
@@ -113,6 +122,12 @@ class AgentTest(unittest.TestCase):
         self.assertEqual(extract_url("Audit https://a.io/x, please."), "https://a.io/x")
         self.assertEqual(extract_url("check shop.example.com/pricing now"), "https://shop.example.com/pricing")
         self.assertIsNone(extract_url("audit my site"))
+        self.assertEqual(extract_url("see https://en.wikipedia.org/wiki/Rust_(language)."), "https://en.wikipedia.org/wiki/Rust_(language)")
+        self.assertEqual(extract_url("(https://a.io/x)"), "https://a.io/x")
+        self.assertEqual(extract_url("audit shop.example.com:8443 today"), "https://shop.example.com:8443")
+        self.assertEqual(extract_url("audit example.com?ref=1"), "https://example.com?ref=1")
+        self.assertIsNone(extract_url("Audit my site, reply to owner@example.com"))
+        self.assertEqual(extract_url("mail me@x.com about shop.io/a"), "https://shop.io/a")
 
     def test_private_addresses_refused(self):
         for u in ("http://127.0.0.1/", "http://169.254.169.254/latest", "file:///etc/passwd", "http://localhost:8080"):
@@ -163,10 +178,43 @@ class AgentTest(unittest.TestCase):
             {"jobId": "j4", "title": "SEO audit", "description": "https://shop.io", "budgetToken": "USDC", "minBuilderVerification": "identity"},
             {"jobId": "j5", "title": "SEO audit", "description": "https://shop.io", "jobKind": "competition"},
             {"jobId": "j6", "title": "SEO audit", "description": "https://shop.io", "budgetToken": "USDC", "budgetAmount": "1"},
+            {"jobId": "j7", "title": "Smart contract audit", "description": "audit https://github.com/x/y", "budgetToken": "USDC"},
+            {"jobId": "j8", "title": "Security audit", "description": "audit the code at https://github.com/x/y", "budgetToken": "USDC"},
         ]
         run.maybe_bid(self.m, set())
         self.assertEqual(list(self.s["bids"]), ["j1"])
         self.assertEqual(self.s["bids"]["j1"]["amount"], "3.00")
+
+
+    def test_connection_uses_the_vetted_address(self):
+        import audit as A
+        calls = []
+
+        def rebinding(host, port, *a, **k):
+            calls.append(host)
+            ip = "93.184.216.34" if len(calls) == 1 else "127.0.0.1"
+            return [(2, 1, 6, "", (ip, port))]
+
+        port = int(self.site_url.rsplit(":", 1)[1])
+        with mock.patch.object(A.socket, "getaddrinfo", rebinding):
+            with self.assertRaises(UnsafeUrl):
+                A.fetch(f"http://rebind.test:{port}/")
+
+    def test_stalling_server_is_cut_off(self):
+        import audit as A
+        srv = socket.socket()
+        srv.bind(("127.0.0.1", 0))
+        srv.listen(1)
+        with mock.patch.object(A, "FETCH_DEADLINE", 1):
+            t0 = time.time()
+            with self.assertRaises(TimeoutError):
+                A.fetch(f"http://127.0.0.1:{srv.getsockname()[1]}/", allow_private=True)
+            self.assertLess(time.time() - t0, 5)
+        srv.close()
+
+    def test_malformed_link_does_not_abort_audit(self):
+        md, summary = audit(self.site_url + "/badlink", allow_private=True)
+        self.assertIn("score", summary)
 
 
 if __name__ == "__main__":

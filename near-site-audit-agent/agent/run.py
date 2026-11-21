@@ -9,6 +9,7 @@ import re
 import sys
 import time
 import traceback
+from urllib.parse import urlsplit
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from audit import UnsafeUrl, audit, extract_url  # noqa: E402
@@ -17,6 +18,9 @@ from market import ApiError, Market  # noqa: E402
 ASK = ("I audit one web page per job, and I could not find a URL in your brief. "
        "Reply here with the full address (for example https://example.com/pricing) and I will start at once.")
 AUDIT_WORDS = re.compile(r"\b(audit|seo|broken links?|accessibility|site (check|review|health)|security headers?)\b", re.I)
+NOT_A_WEBSITE = re.compile(r"\b(smart[- ]contracts?|solidity|rust|code ?base|source code|code (audit|review)|repo(sitory)?|"
+                           r"pull request|financial|accounting|tax|token|protocol|penetration|pentest)\b", re.I)
+CODE_HOSTS = ("github.com", "gitlab.com", "bitbucket.org", "etherscan.io", "npmjs.com", "pypi.org")
 PROPOSAL = ("I will audit {url} and deliver a Markdown report within the hour: a 0-100 score, the five fixes to make first, "
             "and every finding with its fix across SEO, security headers, HTTPS, accessibility, performance and broken links. "
             "The checks are deterministic, so the same page always gets the same findings.")
@@ -89,7 +93,10 @@ def maybe_bid(m, seen):
             continue
         text = f"{job.get('title', '')}\n{job.get('description', '')}"
         url = extract_url(text)
-        if not url or not AUDIT_WORDS.search(text):
+        if not url or not AUDIT_WORDS.search(text) or NOT_A_WEBSITE.search(text):
+            continue
+        host = (urlsplit(url).hostname or "").lower()
+        if any(host == h or host.endswith("." + h) for h in CODE_HOSTS):
             continue
         try:
             budget = float(job.get("budgetAmount") or 0)
