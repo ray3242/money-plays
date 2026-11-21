@@ -159,6 +159,12 @@ class PolicyBrain:
                 if hyps:
                     self._plan_fix(c["action"], c["args"], f"Recalled fix confirmed by evidence already collected: {hyps[0][2]}", evidence=hyps[0][2], cites=[c["cite"]], guard=c.get("guard"))
                     return self.queue.pop(0)
+                self.ruled_out.add(c["cite"].get("id"))
+                for h in interpret(tool, self.seen[tool], self.view["service"]):
+                    if not self._dead(h):
+                        self._plan_fix(h[0], h[1], f"Evidence in {tool}: {h[2]}", evidence=h[2])
+                if self.queue:
+                    return self.queue.pop(0)
                 continue
             return {"type": "diagnose", "tool": tool, "candidate": c, "cites": [c["cite"]],
                     "why": f"{c['cite']['label']} says this symptom was fixed with {fmt_action(c['action'], c['args'])} and can be confirmed with {tool}. Checking before acting."}
