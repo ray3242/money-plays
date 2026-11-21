@@ -25,3 +25,8 @@ it('authorizes both source and replacement issue before superseding', async () =
   expect(mocks.issue.mock.calls.map(call => call[0])).toEqual(['APP-1', 'APP-2']);
   expect(mocks.supersede).toHaveBeenCalledWith('a', 'b', 'ada');
 });
+it('preserves an unlinked decision project key when recording', async () => {
+  await recordDecision({ title: 'Decision', projectKey: 'APP' }, { accountId: 'ada' });
+  expect(mocks.create).toHaveBeenCalledWith({ title: 'Decision', projectKey: 'APP' }, 'ada');
+  expect(mocks.issue).not.toHaveBeenCalled();
+});

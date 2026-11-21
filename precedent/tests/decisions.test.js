@@ -17,6 +17,14 @@ beforeEach(() => {
   mocks.getMany.mockReset().mockImplementation(async () => ({ results: [...mocks.store].map(([key, value]) => ({ key, value })) }));
 });
 describe('decision ledger', () => {
+  it('persists unlinked project decisions and returns them in project searches', async () => {
+    const { issueKey, ...projectInput } = input;
+    const entry = await createDecision(projectInput, 'ada');
+    expect(await getDecision(entry.id)).toMatchObject({ projectKey: 'APP' });
+    expect(entry.issueKey).toBeUndefined();
+    expect(await searchDecisions('', { projectKey: 'APP' })).toEqual([entry]);
+    expect(await searchDecisions('', { projectKey: 'OTHER' })).toEqual([]);
+  });
   it('creates authenticated entries, ignores forged authors, and reads them', async () => {
     const entry = await createDecision({ ...input, authorAccountId: 'forged' }, 'ada');
     expect(entry).toMatchObject({ status: 'accepted', authorAccountId: 'ada', tags: ['queue'] });

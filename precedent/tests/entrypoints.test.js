@@ -48,6 +48,18 @@ it('resolver forwards supersede identifiers and identity', async () => {
   await definitions.supersedeDecision({ payload: { id: 'one', byId: 'two' }, context });
   expect(mocks.replace).toHaveBeenCalledWith('one', 'two', context);
 });
+it('records unlinked project-page decisions in the trusted project and validates it', async () => {
+  const projectContext = { accountId: 'ada', extension: { project: { key: 'APP' } } };
+  await definitions.recordDecision({ payload: { title: 'Decision', projectKey: 'OTHER' }, context: projectContext });
+  expect(mocks.record).toHaveBeenCalledWith({ title: 'Decision', projectKey: 'APP' }, projectContext);
+  mocks.record.mockClear();
+  for (const key of ['', 'bad', 'APP OR 1=1']) {
+    await expect(definitions.recordDecision({ payload: { title: 'Decision' }, context: { ...projectContext, extension: { project: { key } } } })).rejects.toThrow('Invalid project key');
+  }
+  expect(mocks.record).not.toHaveBeenCalled();
+  await definitions.recordDecision({ payload: { title: 'Decision' }, context: { accountId: 'ada' } });
+  expect(mocks.record).toHaveBeenCalledWith({ title: 'Decision' }, { accountId: 'ada' });
+});
 it('evidence actions propagate underlying permission/API errors', async () => {
   mocks.build.mockRejectedValue(new Error('403'));
   await expect(assessShipReadiness({ issueKey: 'APP-1' })).rejects.toThrow('403');

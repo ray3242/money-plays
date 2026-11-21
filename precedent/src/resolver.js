@@ -12,7 +12,9 @@ export const definitions = {
   },
   async recordDecision({ payload, context }) {
     const issueKey = context?.extension?.issue?.key ?? payload?.issueKey;
-    return recordDecision({ ...payload, ...(issueKey ? { issueKey: validateIssueKey(issueKey) } : {}) }, context);
+    const projectKey = context?.extension?.project?.key ?? payload?.projectKey;
+    if (projectKey !== undefined && (typeof projectKey !== 'string' || !/^[A-Z][A-Z0-9_]+$/.test(projectKey))) throw new Error('Invalid project key');
+    return recordDecision({ ...payload, ...(issueKey ? { issueKey: validateIssueKey(issueKey) } : {}), ...(projectKey !== undefined ? { projectKey } : {}) }, context);
   },
   async supersedeDecision({ payload, context }) {
     return replaceDecision(payload?.id, payload?.byId, context);
