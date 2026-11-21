@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { adfToText } from '../src/lib/adf.js';
-import { safePhrase, extractKeywords } from '../src/lib/keywords.js';
+import { normalizeText, safePhrase, extractKeywords } from '../src/lib/keywords.js';
 import { shipConfidence } from '../src/lib/score.js';
 
 const issue = () => ({ key: 'APP-1', fields: { description: 'Acceptance criteria: given a valid request when submitted then the operation succeeds.', issuelinks: [] } });
@@ -27,6 +27,13 @@ describe('keywords', () => {
     expect(extractKeywords(null)).toEqual([]);
     expect(safePhrase('a"\\ OR (x:y) +z*?')).toBe('a or x y z');
     expect(safePhrase(null)).toBe('');
+  });
+  it('extracts weighted terms after 160 characters while capping only query phrases', () => {
+    expect(extractKeywords({ fields: { summary: 'Queue', description: `${'the '.repeat(60)}${'reconciliation '.repeat(5)}`, labels: ['gateway'], components: [{ name: 'Payments' }] } })).toEqual(['reconciliation', 'queue', 'gateway', 'payments']);
+    expect(normalizeText('A'.repeat(200))).toBe('a'.repeat(200));
+    expect(safePhrase('A'.repeat(200))).toBe('a'.repeat(160));
+    expect(normalizeText(null)).toBe('');
+    expect(normalizeText('Queue: PAYMENT!')).toBe('queue payment');
   });
 });
 describe('ship confidence', () => {

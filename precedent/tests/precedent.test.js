@@ -41,6 +41,22 @@ it('survives Confluence failure, reports graph note and empty result', async () 
   expect(result.warnings).toContain('Confluence decision search unavailable; check installation and permissions.');
   expect(result.warnings).toContain('Graph skipped');
 });
+it('ranks using description terms and labels beyond the query phrase cap', async () => {
+  mocks.searchJql.mockResolvedValue([
+    { key: 'APP-2', fields: { summary: 'Queue' } },
+    { key: 'APP-3', fields: { summary: 'Historical change', description: `${'the '.repeat(60)}queue`, labels: ['latency'] } }
+  ]);
+  const result = await buildPrecedent('APP-1');
+  expect(result.issues.map(({ key, relevance }) => ({ key, relevance }))).toEqual([{ key: 'APP-3', relevance: 2 }, { key: 'APP-2', relevance: 1 }]);
+});
+it('retains the 160-character phrase cap in JQL and CQL', async () => {
+  mocks.getIssue.mockResolvedValue({ key: 'APP-1', fields: { summary: 'x'.repeat(200) } });
+  await buildPrecedent('APP-1');
+  for (const search of [mocks.searchJql, mocks.searchCql]) {
+    expect(search.mock.calls[0][0]).toContain('x'.repeat(160));
+    expect(search.mock.calls[0][0]).not.toContain('x'.repeat(161));
+  }
+});
 it('skips keyword searches on empty inputs and warns about partial history', async () => {
   mocks.getIssue.mockResolvedValue({ key: 'APP-1', fields: {}, changelog: { total: 10, histories: [] } });
   const result = await buildPrecedent('APP-1');

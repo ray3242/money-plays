@@ -1,6 +1,6 @@
 import { getIssue, searchJql, issueUrl } from './jira.js';
 import { searchCql } from './confluence.js';
-import { extractKeywords, safePhrase } from './keywords.js';
+import { extractKeywords, normalizeText, safePhrase } from './keywords.js';
 import { adfToText } from './adf.js';
 import { visibleDecisions } from './ledger-access.js';
 import { relatedWork } from './twg.js';
@@ -21,7 +21,7 @@ export async function buildPrecedent(issueKey) {
   const terms = keywords.map(term => `text ~ "${safePhrase(term)}"`).join(' OR ');
   const rawIssues = terms ? await searchJql(`project = "${projectKey}" AND resolution IS NOT EMPTY AND key != "${issueKey}" AND (${terms}) ORDER BY resolved DESC`, undefined, 8) : [];
   const issues = rawIssues.map(item => {
-    const text = safePhrase(`${item.fields?.summary ?? ''} ${adfToText(item.fields?.description)} ${(item.fields?.labels ?? []).join(' ')}`);
+    const text = normalizeText(`${item.fields?.summary ?? ''} ${adfToText(item.fields?.description)} ${(item.fields?.labels ?? []).join(' ')}`);
     const words = new Set(text.split(' '));
     return { key: item.key, summary: item.fields?.summary, kind: precedentKind(item), relevance: keywords.filter(word => words.has(word)).length,
       url: issueUrl(item.key), assignee: item.fields?.assignee, resolvedAt: item.fields?.resolutiondate };
