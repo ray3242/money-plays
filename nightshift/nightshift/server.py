@@ -75,6 +75,9 @@ class H(BaseHTTPRequestHandler):
         u = urlparse(self.path)
         q = parse_qs(u.query)
         if u.path == "/api/run":
+            origin = self.headers.get("Origin")
+            if origin and urlparse(origin).netloc != self.headers.get("Host"):
+                return self._json({"ok": False, "error": "cross-origin request refused"}, 403)
             with LOCK:
                 if STATE["running"]:
                     return self._json({"ok": False, "error": "already running"}, 409)
