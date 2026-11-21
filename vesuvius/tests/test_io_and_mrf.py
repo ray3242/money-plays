@@ -89,8 +89,10 @@ def test_volume_sample_blockwise_matches_dense(tmp_path):
     v = ZarrVolume(str(write_zarr(tmp_path / "b.zarr", vol, sep="/")))
     pts = rng.uniform(1, 68, (500, 3))
     dense = v.sample(pts)
+    dense3 = v.sample(pts, order=3)
     v.block, v.max_block_voxels = 16, 1
     np.testing.assert_allclose(v.sample(pts), dense, atol=1e-4)
+    np.testing.assert_allclose(v.sample(pts, order=3), dense3, atol=0.05)
 
 
 def test_z_zero_is_a_valid_vertex():

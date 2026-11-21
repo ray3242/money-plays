@@ -179,8 +179,10 @@ class ZarrVolume:
         res = np.zeros(len(pts), dtype=np.float32)
         if good.any():
             g = pts[good]
-            lo = np.floor(g.min(0)).astype(np.int64) - 2
-            hi = np.ceil(g.max(0)).astype(np.int64) + 3
+            # spline prefiltering (order > 1) depends on voxels well beyond the stencil
+            halo = 2 if order <= 1 else 10
+            lo = np.floor(g.min(0)).astype(np.int64) - halo
+            hi = np.ceil(g.max(0)).astype(np.int64) + halo + 1
             if np.prod(hi - lo) <= self.max_block_voxels:
                 res[good] = self._sample_block(g, lo, hi, order, map_coordinates)
             else:
@@ -194,8 +196,8 @@ class ZarrVolume:
                 vals = np.empty(len(g), dtype=np.float32)
                 for idx in np.split(order_idx, bounds):
                     gb = g[idx]
-                    blo = np.floor(gb.min(0)).astype(np.int64) - 2
-                    bhi = np.ceil(gb.max(0)).astype(np.int64) + 3
+                    blo = np.floor(gb.min(0)).astype(np.int64) - halo
+                    bhi = np.ceil(gb.max(0)).astype(np.int64) + halo + 1
                     vals[idx] = self._sample_block(gb, blo, bhi, order, map_coordinates)
                 res[good] = vals
         return res.reshape(np.asarray(zyx).shape[:-1])
