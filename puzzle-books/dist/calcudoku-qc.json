@@ -121,7 +121,7 @@
   {
    "check": "background artwork fills the bleed",
    "ok": true,
-   "detail": "corners are inked"
+   "detail": "corner colours [(252, 198, 63), (252, 198, 63), (252, 198, 63), (252, 198, 63)]"
   }
  ],
  "passed": true

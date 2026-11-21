@@ -152,6 +152,7 @@ def check_cover(path, pages, dims):
                 f"{spine_text} spine text spans, {pages} pages"))
     # background must reach all four bleed edges
     pix = page.get_pixmap(dpi=30)
-    corners = [pix.pixel(0, 0), pix.pixel(pix.width - 1, 0), pix.pixel(0, pix.height - 1), pix.pixel(pix.width - 1, pix.height - 1)]
-    out.append(("background artwork fills the bleed", all(sum(c[:3]) < 740 for c in corners), "corners are inked"))
+    x1, y1 = pix.width - 2, pix.height - 2  # one pixel in: the last column/row is partly outside the page
+    corners = [pix.pixel(1, 1), pix.pixel(x1, 1), pix.pixel(1, y1), pix.pixel(x1, y1)]
+    out.append(("background artwork fills the bleed", all(sum(c[:3]) < 700 for c in corners), f"corner colours {corners}"))
     return out
