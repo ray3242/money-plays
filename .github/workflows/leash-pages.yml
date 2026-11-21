@@ -1,0 +1,40 @@
+name: leash-pages
+# Publishes the Leash web app to the gh-pages branch under /leash, leaving
+# other plays' folders on that branch alone.
+on:
+  push:
+    branches: [main]
+    paths: ["leash/**", ".github/workflows/leash-pages.yml"]
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: gh-pages
+  cancel-in-progress: false
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: leash/package-lock.json
+      - run: npm ci && npm run build
+        working-directory: leash
+      - name: Publish to gh-pages/leash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git fetch origin gh-pages; then
+            git worktree add site origin/gh-pages
+            git -C site switch -C gh-pages
+          else
+            git worktree add --orphan -b gh-pages site
+          fi
+          rm -rf site/leash && mkdir -p site/leash && cp -r leash/dist/. site/leash/
+          touch site/.nojekyll
+          git -C site add -A
+          git -C site diff --cached --quiet || git -C site commit -m "Deploy leash ${GITHUB_SHA::7}"
+          git -C site push origin gh-pages

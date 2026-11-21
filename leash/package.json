@@ -1,0 +1,28 @@
+{
+  "name": "leash",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "abi": "node scripts/gen-abi.mjs",
+    "test": "vitest run",
+    "agent": "tsx src/cli/agent.ts",
+    "e2e:local": "bash scripts/e2e-local.sh",
+    "chain": "bash scripts/dev-chain.sh"
+  },
+  "dependencies": {
+    "viem": "^2.58.4"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.6",
+    "playwright": "^1.65.1",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.8",
+    "vitest": "^5.1.1"
+  }
+}

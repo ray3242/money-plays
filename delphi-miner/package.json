@@ -1,0 +1,1 @@
+{ "name": "delphi-miner", "private": true, "type": "module", "license": "MIT", "scripts": { "triage": "node triage.mjs", "test": "node --test test/*.test.mjs" } }

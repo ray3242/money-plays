@@ -1,0 +1,31 @@
+name: leash-ci
+on:
+  push:
+    branches: [main]
+    paths: ["leash/**", ".github/workflows/leash-ci.yml"]
+  pull_request:
+    paths: ["leash/**", ".github/workflows/leash-ci.yml"]
+permissions:
+  contents: read
+defaults:
+  run:
+    working-directory: leash
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: foundry-rs/foundry-toolchain@v1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: leash/package-lock.json
+      - run: bash scripts/install-libs.sh
+      - run: forge test
+        working-directory: leash/contracts
+      - run: npm ci
+      - run: npm run abi && git diff --exit-code src/core/abi.ts
+      - run: npm test
+      - run: npm run build
+      - run: npm run e2e:local
