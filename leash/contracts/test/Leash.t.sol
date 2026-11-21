@@ -212,6 +212,11 @@ contract LeashTest is Test {
         uint256 real2 = _invoice(merchant, 10 * USD);
         i = _intent(lid, real2);
         _expectRefused(i, _sign(agentKey, i), Leash.Check.PayeeNotAllowed);
+
+        // Restoring a removed payee lists it once, not twice.
+        vm.prank(owner);
+        leash.setPayeeAllowed(lid, "acme-cloud", true);
+        assertEq(leash.allowlistOf(lid).length, 1);
     }
 
     function test_confirmationOfPayee_nameMustMatchAddress() public {

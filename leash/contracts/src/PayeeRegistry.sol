@@ -16,6 +16,9 @@ contract PayeeRegistry {
 
     mapping(bytes32 nameHash => address account) public accountOf;
     mapping(address account => string name) public nameOf;
+    /// @notice When a name was claimed by its current holder (0 if unregistered).
+    ///         Payers use it to tell an established payee from a newer lookalike.
+    mapping(bytes32 nameHash => uint64 timestamp) public registeredAt;
 
     /// @notice Claim `name` for the caller. Names are 3-32 chars of [a-z0-9.-].
     function register(string calldata name) external returns (bytes32 nameHash) {
@@ -25,6 +28,7 @@ contract PayeeRegistry {
         if (accountOf[nameHash] != address(0)) revert NameTaken();
         accountOf[nameHash] = msg.sender;
         nameOf[msg.sender] = name;
+        registeredAt[nameHash] = uint64(block.timestamp);
         emit PayeeRegistered(msg.sender, nameHash, name);
     }
 
@@ -35,6 +39,7 @@ contract PayeeRegistry {
         bytes32 nameHash = keccak256(bytes(name));
         delete accountOf[nameHash];
         delete nameOf[msg.sender];
+        delete registeredAt[nameHash];
         emit PayeeReleased(msg.sender, nameHash, name);
     }
 

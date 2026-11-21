@@ -74,7 +74,19 @@ export async function readLeash(client: PublicClient, d: Deployment, id: bigint)
   };
 }
 
-/** Names the agent treats as known-good: the leash allowlist plus everyone this owner already paid. */
+/** Orders names by when they were registered, oldest first; unregistered names go last. */
+export function bySeniority(names: string[], registeredAt: bigint[]): string[] {
+  return names
+    .map((name, i) => ({ name, at: registeredAt[i] === 0n ? undefined : registeredAt[i], i }))
+    .sort((x, y) => (x.at === undefined ? (y.at === undefined ? x.i - y.i : 1) : y.at === undefined ? -1 : x.at < y.at ? -1 : x.at > y.at ? 1 : x.i - y.i))
+    .map((x) => x.name);
+}
+
+/**
+ * Names the agent treats as known-good: the leash allowlist plus everyone this
+ * owner already paid, ordered by registration time. `lookalikeOf` treats the
+ * older of two similar names as the original, however each one became trusted.
+ */
 export async function trustedNames(
   client: PublicClient,
   d: Deployment,
@@ -90,7 +102,11 @@ export async function trustedNames(
     const n = await client.readContract({ address: d.registry, abi: payeeRegistryAbi, functionName: "nameOf", args: [payee] });
     if (n) names.add(n);
   }
-  return [...names];
+  const list = [...names];
+  const at = await Promise.all(
+    list.map((n) => client.readContract({ address: d.registry, abi: payeeRegistryAbi, functionName: "registeredAt", args: [nameHash(n)] })),
+  );
+  return bySeniority(list, at.map(BigInt));
 }
 
 /**

@@ -64,7 +64,8 @@ async function submit(dec: Decision): Promise<void> {
         args: [dec.intent, dec.signature],
       });
       const receipt = await client.waitForTransactionReceipt({ hash });
-      log({ event: "paid", invoice: dec.invoiceId, tx: hash, status: receipt.status });
+      if (receipt.status !== "success") throw new Error(`transaction ${hash} reverted`);
+      log({ event: "paid", invoice: dec.invoiceId, tx: hash });
       return;
     } catch (e) {
       // Paying is idempotent on-chain: if an earlier attempt landed, the invoice is no longer open.

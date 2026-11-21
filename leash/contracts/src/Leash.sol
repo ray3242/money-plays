@@ -92,6 +92,7 @@ contract Leash is EIP712, ReentrancyGuard {
     mapping(uint256 id => Invoice) internal _invoices;
     mapping(uint256 leashId => mapping(bytes32 nameHash => bool)) public payeeAllowed;
     mapping(uint256 leashId => string[]) internal _allowlistNames;
+    mapping(uint256 leashId => mapping(bytes32 nameHash => bool)) internal _everListed;
     mapping(address owner => uint256[]) internal _leashesOf;
     mapping(address payer => uint256[]) internal _invoicesFor;
     mapping(address payee => uint256[]) internal _invoicesBy;
@@ -206,7 +207,10 @@ contract Leash is EIP712, ReentrancyGuard {
 
     function _setPayeeAllowed(uint256 leashId, string calldata name, bool allowed) internal {
         bytes32 h = keccak256(bytes(name));
-        if (allowed && !payeeAllowed[leashId][h]) _allowlistNames[leashId].push(name);
+        if (allowed && !_everListed[leashId][h]) {
+            _everListed[leashId][h] = true;
+            _allowlistNames[leashId].push(name);
+        }
         payeeAllowed[leashId][h] = allowed;
         emit PayeeAllowlisted(leashId, h, name, allowed);
     }

@@ -323,7 +323,13 @@ function render() {
   $("#bar").innerHTML = `<span>Network <b>${chainId === aevumTestnet.id ? "QDay Aevum Testnet" : `chain ${chainId}`}</b></span>
     <span>Leash ${addrLink(d!.leash)}</span><span>Payee registry ${addrLink(d!.registry)}</span><span>${TOKEN_SYMBOL} ${addrLink(d!.token)}</span>
     ${chainId === aevumTestnet.id ? '<span><a href="https://faucet.qday.info/en" target="_blank" rel="noopener">Faucet</a></span>' : ""}
-    <span>${usingSharedKeys ? 'Shared demo wallets (<a href="?fresh">use private ones</a>)' : "Wallets are throwaway test keys kept in this browser"}</span>`;
+    <span>${usingSharedKeys ? 'Shared demo wallets (<a href="${freshHref()}">use private ones</a>)' : "Wallets are throwaway test keys kept in this browser"}</span>`;
+}
+
+function freshHref(): string {
+  const p = new URLSearchParams(location.search);
+  p.set("fresh", "1");
+  return `?${p}`;
 }
 
 async function refresh() {
@@ -356,6 +362,9 @@ const actions: Record<string, (el: HTMLElement) => Promise<unknown>> = {
   createLeash: async () => {
     const names = val("#f-names").split(",").map((n) => n.trim().toLowerCase()).filter(Boolean);
     const expiry = BigInt(state!.now + Number(val("#f-expiry")));
+    // The page shows one leash. Leaving the old one alive would leave spending authority nobody can see.
+    const old = state!.leash;
+    if (old && !old.revoked && !(await send("business", "Cut the previous leash", d!.leash, leashAbi as Abi, "revoke", [old.id]))) return;
     await send("business", "Create leash", d!.leash, leashAbi as Abi, "createLeash", [keys.agent.address, amount("#f-budget"), BigInt(val("#f-period")), amount("#f-cap"), expiry, names]);
   },
   allow: () => send("business", `Allow ${val("#f-allow")}`, d!.leash, leashAbi as Abi, "setPayeeAllowed", [state!.leash!.id, val("#f-allow").toLowerCase(), true]),

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { bySeniority } from "../src/core/agent";
 import { editDistance, injectionSigns, lookalikeOf, skeleton } from "../src/core/screen";
 
 describe("lookalike payee detection", () => {
@@ -46,5 +47,15 @@ describe("memo injection screening", () => {
     for (const memo of ["November hosting, 3 nodes", "INV-2041 freight Edmonton to Calgary", "Annual licence renewal", ""]) {
       expect(injectionSigns(memo), memo).toEqual([]);
     }
+  });
+});
+
+describe("trust order", () => {
+  it("puts the older registration first, whatever order the names became trusted in", () => {
+    // The lookalike was allowlisted; the real merchant was only ever paid by the owner.
+    const trusted = bySeniority(["acme-c1oud", "acme-cloud", "unregistered"], [200n, 100n, 0n]);
+    expect(trusted).toEqual(["acme-cloud", "acme-c1oud", "unregistered"]);
+    expect(lookalikeOf("acme-c1oud", trusted)).toBe("acme-cloud");
+    expect(lookalikeOf("acme-cloud", trusted)).toBeUndefined();
   });
 });
