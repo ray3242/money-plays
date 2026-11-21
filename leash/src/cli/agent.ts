@@ -116,6 +116,8 @@ async function tick(): Promise<void> {
       ...(relayer ? {} : { intent: dec.intent, signature: dec.signature }),
     });
     await submit(dec);
+    // A name authorized in this poll counts as trusted for the invoices that follow it.
+    if (!trusted.includes(dec.payeeName)) trusted.push(dec.payeeName);
   }
 }
 
