@@ -1,0 +1,36 @@
+{
+  "name": "precedent",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "vite build --config static/vite.config.js --mode panel && vite build --config static/vite.config.js --mode ledger",
+    "preview": "npm run preview:panel",
+    "preview:panel": "vite --config static/vite.config.js --mode panel --host 0.0.0.0 --port 4173",
+    "preview:ledger": "vite --config static/vite.config.js --mode ledger --host 0.0.0.0 --port 4174",
+    "test": "vitest run",
+    "validate:manifest": "node scripts/validate-manifest.mjs"
+  },
+  "dependencies": {
+    "@atlaskit/tokens": "^20.14.0",
+    "@forge/api": "8.5.0",
+    "@forge/bridge": "^7.3.0",
+    "@forge/kvs": "2.1.2",
+    "@forge/resolver": "2.0.2",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@forge/manifest": "13.9.0",
+    "@testing-library/react": "^16.3.3",
+    "@testing-library/user-event": "^14.6.13",
+    "@vitejs/plugin-react": "^6.3.0",
+    "ajv": "8.20.0",
+    "ajv-formats": "^3.0.1",
+    "jsdom": "^31.0.1",
+    "playwright": "^1.65.1",
+    "vite": "^8.3.8",
+    "vitest": "5.1.1",
+    "yaml": "^2.8.1"
+  }
+}
