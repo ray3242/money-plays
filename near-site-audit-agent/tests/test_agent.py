@@ -216,6 +216,14 @@ class AgentTest(unittest.TestCase):
         self.assertNotIn("checked links are broken", md)
         self.assertNotIn("have no label", md)
 
+    def test_multi_member_gzip_is_fully_decoded(self):
+        import audit as A
+        data = gzip.compress(b"<h1>one</h1>") + gzip.compress(b"<h2>two</h2>")
+        inf = A._decoder("gzip")
+        out = b"".join(inf.feed(data[i:i + 7], 10_000) for i in range(0, len(data), 7))
+        self.assertEqual(out, b"<h1>one</h1><h2>two</h2>")
+        self.assertEqual(A._decoder("gzip").feed(gzip.compress(b"x" * 5000), 100), b"x" * 100)
+
     def test_robots_groups(self):
         self.assertFalse(blocks_everything("User-agent: *\nDisallow: /admin\n\nUser-agent: BadBot\nDisallow: /\n"))
         self.assertTrue(blocks_everything("User-agent: BadBot\nUser-agent: *\nDisallow: /\n"))

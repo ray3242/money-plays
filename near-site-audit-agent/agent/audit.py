@@ -166,7 +166,7 @@ def _fetch(url, allow_private, method, limit):
                 if not chunk:
                     break
                 wire += len(chunk)
-                body += _inflate(dec, chunk, limit + 1 - len(body)) if dec else chunk
+                body += dec.feed(chunk, limit + 1 - len(body)) if dec else chunk
             return {"status": r.status, "url": r.geturl(), "headers": {k.lower(): v for k, v in r.headers.items()},
                     "body": body[:limit], "truncated": len(body) > limit, "seconds": time.time() - t0,
                     "redirects": red.chain, "wire_bytes": wire}
@@ -175,20 +175,29 @@ def _fetch(url, allow_private, method, limit):
                 "body": b"", "truncated": False, "seconds": time.time() - t0, "redirects": red.chain, "wire_bytes": 0}
 
 
+class _Inflater:
+    """Incremental gzip/deflate decoder that follows multi-member gzip streams and caps output size."""
+
+    def __init__(self, enc):
+        self.wbits = 16 + zlib.MAX_WBITS if enc in ("gzip", "x-gzip") else zlib.MAX_WBITS
+        self.dec = zlib.decompressobj(self.wbits)
+        self.broken = False
+
+    def feed(self, chunk, room):
+        out = b""
+        try:
+            while chunk and not self.broken and room - len(out) > 0:
+                out += self.dec.decompress(chunk, room - len(out))
+                chunk = self.dec.unused_data if self.dec.eof else b""
+                if chunk:
+                    self.dec = zlib.decompressobj(self.wbits)
+        except zlib.error:  # corrupt or mislabelled body: keep what was decoded so far
+            self.broken = True
+        return out
+
+
 def _decoder(enc):
-    if enc in ("gzip", "x-gzip"):
-        return zlib.decompressobj(16 + zlib.MAX_WBITS)
-    if enc == "deflate":
-        return zlib.decompressobj()
-    return None
-
-
-def _inflate(dec, chunk, room):
-    """Decompress at most room bytes, so a compression bomb cannot exhaust memory."""
-    try:
-        return dec.decompress(chunk, max(room, 1))
-    except zlib.error:  # corrupt or mislabelled body: keep what was decoded so far
-        return b""
+    return _Inflater(enc) if enc in ("gzip", "x-gzip", "deflate") else None
 
 
 def parse_robots(text):
