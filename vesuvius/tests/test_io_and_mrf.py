@@ -79,3 +79,15 @@ def test_cli_end_to_end(sheet_scene, tmp_path, capsys):
         assert (out / f).exists()
     assert main(["render", str(out), str(root), "-o", str(tmp_path / "tex.png"), "--window", "2", "20", "2", "20"]) == 0
     assert (tmp_path / "tex.png").exists()
+
+
+def test_volume_sample_blockwise_matches_dense(tmp_path):
+    from conftest import write_zarr
+
+    rng = np.random.default_rng(2)
+    vol = rng.integers(0, 255, (70, 70, 70), dtype=np.uint8)
+    v = ZarrVolume(str(write_zarr(tmp_path / "b.zarr", vol, sep="/")))
+    pts = rng.uniform(1, 68, (500, 3))
+    dense = v.sample(pts)
+    v.block, v.max_block_voxels = 16, 1
+    np.testing.assert_allclose(v.sample(pts), dense, atol=1e-4)

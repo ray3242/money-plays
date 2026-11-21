@@ -40,6 +40,8 @@ class ZarrVolume:
         self._lock = threading.Lock()
         self._mem: OrderedDict[tuple[int, int, int], np.ndarray | None] = OrderedDict()
         self._mem_chunks = mem_chunks
+        self.block = 256
+        self.max_block_voxels = 512**3
         self.fetched_bytes = 0
         self.fetched_chunks = 0
 
@@ -168,6 +170,27 @@ class ZarrVolume:
             g = pts[good]
             lo = np.floor(g.min(0)).astype(np.int64) - 2
             hi = np.ceil(g.max(0)).astype(np.int64) + 3
-            sub = self.read(lo, hi).astype(np.float32)
-            res[good] = map_coordinates(sub, (g - lo).T, order=order, mode="nearest", prefilter=order > 1)
+            if np.prod(hi - lo) <= self.max_block_voxels:
+                res[good] = self._sample_block(g, lo, hi, order, map_coordinates)
+            else:
+                # Points spread over a large region (curved surfaces): sample per block so only the
+                # chunks actually touched are held densely, never the whole bounding box.
+                keys = np.floor(g / self.block).astype(np.int64)
+                _, inv = np.unique(keys, axis=0, return_inverse=True)
+                inv = inv.reshape(-1)
+                order_idx = np.argsort(inv, kind="stable")
+                bounds = np.flatnonzero(np.diff(inv[order_idx])) + 1
+                vals = np.empty(len(g), dtype=np.float32)
+                for idx in np.split(order_idx, bounds):
+                    gb = g[idx]
+                    blo = np.floor(gb.min(0)).astype(np.int64) - 2
+                    bhi = np.ceil(gb.max(0)).astype(np.int64) + 3
+                    vals[idx] = self._sample_block(gb, blo, bhi, order, map_coordinates)
+                res[good] = vals
         return res.reshape(np.asarray(zyx).shape[:-1])
+
+    def _sample_block(self, g, lo, hi, order, map_coordinates):
+        sub = self.read(lo, hi)
+        out = np.empty(len(g), dtype=np.float32)
+        map_coordinates(sub, (g - lo).T, output=out, order=order, mode="nearest", prefilter=order > 1)
+        return out
