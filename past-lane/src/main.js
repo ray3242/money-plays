@@ -85,7 +85,7 @@ let track = null, def = null, mode = 'menu', selected = 0;
 const circuits = [...CIRCUITS, dailyCircuit()];
 const P = { x: 0, z: 0, h: 0, vx: 0, vz: 0, speed: 0, idx: 0, lat: 0 };
 let ghosts = [], rec = [], recT = 0;
-let lap = 1, half = false, raceT = 0, lapT = 0, bestLap = 0, score = 0, shields = 3, nitro = 0, combo = 0, comboT = 0, invuln = 0, shake = 0, nearCount = 0, countdown = 0, cdShown = -1, skid = 0, camH = 0, msgT = 0, wrongT = 0, scrapeT = 0;
+let lap = 1, half = false, prog = 0, far = 0, raceT = 0, lapT = 0, bestLap = 0, score = 0, shields = 3, nitro = 0, combo = 0, comboT = 0, invuln = 0, shake = 0, nearCount = 0, countdown = 0, cdShown = -1, skid = 0, camH = 0, msgT = 0, wrongT = 0, scrapeT = 0;
 const keys = {};
 const touch = { left: false, right: false, brake: false, nitro: false };
 
@@ -124,7 +124,7 @@ function placePlayer() {
 function startRace() {
   audio.init(); audio.music(track.th.key);
   clearGhosts(); placePlayer();
-  rec = []; recT = 0; lap = 1; half = false; raceT = 0; lapT = 0; bestLap = 0; score = 0; shields = MAX_SHIELDS; nitro = 0.35; combo = 0; invuln = 0; nearCount = 0; shake = 0;
+  rec = []; recT = 0; lap = 1; half = false; prog = 0; far = 0; raceT = 0; lapT = 0; bestLap = 0; score = 0; shields = MAX_SHIELDS; nitro = 0.35; combo = 0; invuln = 0; nearCount = 0; shake = 0;
   countdown = 3.2; cdShown = -1; mode = 'countdown';
   show('hud'); $('touch').style.display = isTouch ? 'block' : 'none';
   updateHud(true);
@@ -210,9 +210,10 @@ function step() {
 
   // progress
   let di = P.idx - prev; if (di > t.M / 2) di -= t.M; if (di < -t.M / 2) di += t.M;
-  if (di > 0) score += di * t.seg * (1 + combo * 0.1);
-  if (P.idx > t.M * 0.45 && P.idx < t.M * 0.6) half = true;
-  if (half && prev > t.M * 0.8 && P.idx < t.M * 0.2) { lapDone(); if (mode !== 'race') return; }
+  prog += di;
+  if (prog > far) { score += (prog - far) * t.seg * (1 + combo * 0.1); far = prog; }
+  if (far > t.M * 0.45) half = true;
+  if (half && far > t.M * 0.9 && prev > t.M * 0.8 && P.idx < t.M * 0.2) { prog -= t.M; far = Math.max(0, prog); lapDone(); if (mode !== 'race') return; }
   const dot = nfx * t.tx[i] + nfz * t.tz[i];
   wrongT = dot < -0.3 && P.speed > 5 ? wrongT + DT : 0;
 
