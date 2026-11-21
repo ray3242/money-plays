@@ -35,7 +35,7 @@ export function dailyCircuit() {
   const themes = Object.keys(THEMES);
   return {
     id: 'daily-' + n, name: 'Daily Circuit', theme: themes[Math.floor(r() * themes.length)], seed: n,
-    laps: 6, pts: 9 + Math.floor(r() * 6), vary: 0.28 + r() * 0.2, radius: 160 + r() * 40, width: 9, daily: true,
+    laps: Infinity, pts: 9 + Math.floor(r() * 6), vary: 0.28 + r() * 0.2, radius: 160 + r() * 40, width: 9, daily: true,
   };
 }
 

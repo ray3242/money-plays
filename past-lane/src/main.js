@@ -92,7 +92,7 @@ function loadCircuit(i) {
   selected = i; def = circuits[i];
   if (track) {
     scene.remove(track.group);
-    track.group.traverse((o) => { if (o.geometry) o.geometry.dispose(); if (o.material) { if (o.material.map) o.material.map.dispose(); o.material.dispose(); } });
+    track.group.traverse((o) => { if (o.isInstancedMesh) o.dispose(); if (o.geometry) o.geometry.dispose(); if (o.material) { if (o.material.map) o.material.map.dispose(); o.material.dispose(); } });
   }
   track = buildTrack(def);
   scene.add(track.group);
@@ -104,7 +104,13 @@ function loadCircuit(i) {
   clearGhosts();
   placePlayer();
 }
-function clearGhosts() { for (const g of ghosts) scene.remove(g.mesh); ghosts = []; }
+function clearGhosts() {
+  for (const g of ghosts) {
+    scene.remove(g.mesh);
+    g.mesh.traverse((o) => { if (o.geometry && o.geometry !== boxG && o.geometry !== wheelG) o.geometry.dispose(); if (o.material) o.material.dispose(); });
+  }
+  ghosts = [];
+}
 function placePlayer() {
   const i = 3;
   P.idx = i; P.x = track.px[i]; P.z = track.pz[i]; P.h = Math.atan2(track.tx[i], track.tz[i]); P.vx = P.vz = P.speed = 0; P.lat = 0;
@@ -203,7 +209,7 @@ function step() {
   let di = P.idx - prev; if (di > t.M / 2) di -= t.M; if (di < -t.M / 2) di += t.M;
   if (di > 0) score += di * t.seg * (1 + combo * 0.1);
   if (P.idx > t.M * 0.45 && P.idx < t.M * 0.6) half = true;
-  if (half && prev > t.M * 0.8 && P.idx < t.M * 0.2) lapDone();
+  if (half && prev > t.M * 0.8 && P.idx < t.M * 0.2) { lapDone(); if (mode !== 'race') return; }
   const dot = nfx * t.tx[i] + nfz * t.tz[i];
   wrongT = dot < -0.3 && P.speed > 5 ? wrongT + DT : 0;
 
@@ -219,13 +225,13 @@ function step() {
     g.t += DT * REC_HZ * GHOST_SPEED;
     const u = g.n - 1 - (g.t % g.n), u0 = Math.floor(u), f = u - u0;
     const a = ((u0 % g.n) + g.n) % g.n, b = (a + 1) % g.n;
-    const jump = Math.abs(g.data[a * 3] - g.data[b * 3]) + Math.abs(g.data[a * 3 + 1] - g.data[b * 3 + 1]);
+    const jump = Math.hypot(g.data[a * 3] - g.data[b * 3], g.data[a * 3 + 1] - g.data[b * 3 + 1]);
     g.x = g.data[a * 3] + (g.data[b * 3] - g.data[a * 3]) * f;
     g.z = g.data[a * 3 + 1] + (g.data[b * 3 + 1] - g.data[a * 3 + 1]) * f;
     let ha = g.data[a * 3 + 2], hb = g.data[b * 3 + 2], dh = hb - ha;
     while (dh > Math.PI) dh -= 2 * Math.PI; while (dh < -Math.PI) dh += 2 * Math.PI;
     g.h = ha + dh * f + Math.PI;
-    g.seam = jump > 3 ? 0.4 : Math.max(0, (g.seam || 0) - DT);
+    g.seam = jump > 6 ? 0.4 : Math.max(0, (g.seam || 0) - DT);
     const d = Math.hypot(g.x - P.x, g.z - P.z);
     g.d = d;
     const solid = g.age > 1.5 && g.seam <= 0;

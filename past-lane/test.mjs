@@ -4,10 +4,11 @@ import fs from 'node:fs';
 import path from 'node:path';
 const root = process.argv[2] || 'dist';
 const srv = http.createServer((q, s) => {
-  const f = path.join(root, q.url === '/' ? 'index.html' : q.url.split('?')[0]);
-  if (!fs.existsSync(f)) { s.writeHead(404); return s.end(); }
+  const base = path.resolve(root);
+  const f = path.resolve(base, '.' + (q.url === '/' ? '/index.html' : q.url.split('?')[0]));
+  if (!f.startsWith(base + path.sep) || !fs.existsSync(f)) { s.writeHead(404); return s.end(); }
   s.writeHead(200, { 'content-type': f.endsWith('.js') ? 'text/javascript' : 'text/html' }); s.end(fs.readFileSync(f));
-}).listen(8765);
+}).listen(8765, '127.0.0.1');
 const b = await chromium.launch({ executablePath: '/home/ubuntu/.local/bin/google-chrome', args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', '--mute-audio'] });
 const errs = [];
 async function run(name, vp, touch) {
