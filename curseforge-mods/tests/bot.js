@@ -13,4 +13,4 @@ bot.on('kicked',r=>{console.log('kicked',r);process.exit(1)});bot.on('error',e=>
 http.createServer((q,r)=>{const u=url.parse(q.url,true)
  if(u.pathname==='/chat'){bot.chat(u.query.m);r.end('ok')}
  else if(u.pathname==='/events'){const p=bot.entity?.position;r.end(JSON.stringify({ready,pos:p&&[p.x,p.y,p.z],dim:bot.game?.dimension,chat,raw,particles,sounds,pp:u.query.pp?pp:undefined}));chat=[];raw=[];particles={};pp=[];sounds=[]}
- else r.end('?')}).listen(+hport)
+ else r.end('?')}).listen(+hport,'127.0.0.1')
