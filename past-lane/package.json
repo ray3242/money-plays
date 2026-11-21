@@ -1,0 +1,15 @@
+{
+  "name": "past-lane",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Past Lane: an HTML5 arcade racer where every lap you drive comes back at you head-on.",
+  "type": "module",
+  "license": "MIT",
+  "scripts": {
+    "build": "node build.mjs",
+    "build:crazygames": "node build.mjs --portal=crazygames",
+    "test": "node build.mjs && node test.mjs dist desk"
+  },
+  "dependencies": { "three": "0.170.0" },
+  "devDependencies": { "esbuild": "^0.24.0", "playwright-core": "^1.49.0" }
+}

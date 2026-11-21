@@ -1,0 +1,11 @@
+import { build } from 'esbuild';
+import fs from 'node:fs';
+const portal = (process.argv.find((a) => a.startsWith('--portal=')) || '').split('=')[1];
+const out = portal ? `dist-${portal}` : 'dist';
+fs.rmSync(out, { recursive: true, force: true });
+fs.mkdirSync(out, { recursive: true });
+await build({ entryPoints: ['src/main.js'], bundle: true, minify: true, format: 'iife', target: 'es2019', outfile: `${out}/game.js`, legalComments: 'none' });
+const sdk = { crazygames: '<script src="https://sdk.crazygames.com/crazygames-sdk-v3.js"></script>' }[portal] || '';
+fs.writeFileSync(`${out}/index.html`, fs.readFileSync('src/index.html', 'utf8').replace('<!--PORTAL_SDK-->', sdk));
+if (!portal) fs.copyFileSync('src/opengame.json', `${out}/opengame.json`);
+console.log('built', out, (fs.statSync(`${out}/game.js`).size / 1024).toFixed(0) + ' KB');
