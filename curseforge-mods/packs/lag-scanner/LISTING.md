@@ -1,7 +1,7 @@
 <!-- CurseForge listing for Lag Scanner. Everything below "DESCRIPTION" is the project description (CurseForge accepts Markdown). -->
 - **Project name:** Lag Scanner
 - **Summary (short description):** Find what is lagging your base: counts entities around you by kind and points at the densest pile.
-- **Class:** Mods (upload the `.jar`). Loaders: Fabric, Quilt, NeoForge. Game versions: 1.21 to 1.21.11, 26.1 to 26.3. Environment: server (optional on client).
+- **Class:** Mods (upload the `.jar`). Loaders: Fabric, Quilt, NeoForge, Forge. Game versions: 1.21 to 1.21.11, 26.1 to 26.3. Environment: server (optional on client).
 - **Categories:** Server Utility, Utility & QoL
 - **License:** MIT
 - **Source URL:** https://github.com/ray3242/money-plays/tree/main/curseforge-mods
@@ -43,7 +43,7 @@ Works on vanilla servers, Realms and single player. Any player can run it; a 5 s
 
 ## Install
 
-**As a mod (Fabric, Quilt or NeoForge):** drop the `.jar` into your `mods` folder. Fabric and Quilt also need Fabric API. It is only needed on the server (or in single player); players joining a server do not need it.
+**As a mod (Fabric, Quilt, NeoForge or Forge):** drop the `.jar` into your `mods` folder. Fabric and Quilt also need Fabric API. It is only needed on the server (or in single player); players joining a server do not need it.
 
 **As a data pack (vanilla, Paper, Realms worlds you upload):** put the `-datapack.zip` in your world's `datapacks` folder and run `/reload`.
 
@@ -55,4 +55,4 @@ Run `/function lagscan:uninstall` (operator), then remove the file. It deletes t
 
 ## How this was made
 
-The commands in this pack were written with an AI coding assistant and then run through an automated test suite on real Minecraft servers (1.21.1, 1.21.11 and 26.3, Fabric and NeoForge) before release. The icon is hand-placed pixel art drawn by a script, not an image generator. Source and tests: https://github.com/ray3242/money-plays/tree/main/curseforge-mods
+The commands in this pack were written with an AI coding assistant and then run through an automated test suite on real Minecraft servers (1.21.1, 1.21.11 and 26.3, Fabric, NeoForge and Forge) before release. The icon is hand-placed pixel art drawn by a script, not an image generator. Source and tests: https://github.com/ray3242/money-plays/tree/main/curseforge-mods

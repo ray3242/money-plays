@@ -1,7 +1,7 @@
 <!-- CurseForge listing for Job Site Finder. Everything below "DESCRIPTION" is the project description (CurseForge accepts Markdown). -->
 - **Project name:** Job Site Finder
 - **Summary (short description):** See which workstation and bed each villager owns. Type /trigger jobsite and coloured lines appear.
-- **Class:** Mods (upload the `.jar`). Loaders: Fabric, Quilt, NeoForge. Game versions: 1.21 to 1.21.11, 26.1 to 26.3. Environment: server (optional on client).
+- **Class:** Mods (upload the `.jar`). Loaders: Fabric, Quilt, NeoForge, Forge. Game versions: 1.21 to 1.21.11, 26.1 to 26.3. Environment: server (optional on client).
 - **Categories:** Utility & QoL, Server Utility
 - **License:** MIT
 - **Source URL:** https://github.com/ray3242/money-plays/tree/main/curseforge-mods
@@ -40,7 +40,7 @@ Only the player who ran the command sees the lines, so it is safe on a shared se
 
 ## Install
 
-**As a mod (Fabric, Quilt or NeoForge):** drop the `.jar` into your `mods` folder. Fabric and Quilt also need Fabric API. It is only needed on the server (or in single player); players joining a server do not need it.
+**As a mod (Fabric, Quilt, NeoForge or Forge):** drop the `.jar` into your `mods` folder. Fabric and Quilt also need Fabric API. It is only needed on the server (or in single player); players joining a server do not need it.
 
 **As a data pack (vanilla, Paper, Realms worlds you upload):** put the `-datapack.zip` in your world's `datapacks` folder and run `/reload`.
 
@@ -52,4 +52,4 @@ Run `/function jobsite:uninstall` (operator), then remove the file. It deletes t
 
 ## How this was made
 
-The commands in this pack were written with an AI coding assistant and then run through an automated test suite on real Minecraft servers (1.21.1, 1.21.11 and 26.3, Fabric and NeoForge) before release. The icon is hand-placed pixel art drawn by a script, not an image generator. Source and tests: https://github.com/ray3242/money-plays/tree/main/curseforge-mods
+The commands in this pack were written with an AI coding assistant and then run through an automated test suite on real Minecraft servers (1.21.1, 1.21.11 and 26.3, Fabric, NeoForge and Forge) before release. The icon is hand-placed pixel art drawn by a script, not an image generator. Source and tests: https://github.com/ray3242/money-plays/tree/main/curseforge-mods

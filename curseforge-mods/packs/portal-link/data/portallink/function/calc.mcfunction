@@ -7,12 +7,12 @@ execute store result score #z portallink.v run data get entity @s Pos[2]
 scoreboard players operation @s portallink.tx = #x portallink.v
 scoreboard players operation @s portallink.ty = #y portallink.v
 scoreboard players operation @s portallink.tz = #z portallink.v
-# Overworld -> Nether: divide by 8 (rounds down, like the game). Nether -> Overworld: multiply by 8.
+# Overworld -> Nether: divide by 8 (rounds down, like the game). Nether -> Overworld: scale by 8 before rounding.
 execute if dimension minecraft:overworld run scoreboard players operation @s portallink.tx /= #8 portallink.v
 execute if dimension minecraft:overworld run scoreboard players operation @s portallink.tz /= #8 portallink.v
 execute if dimension minecraft:overworld run scoreboard players set @s portallink.dim 1
-execute if dimension minecraft:the_nether run scoreboard players operation @s portallink.tx *= #8 portallink.v
-execute if dimension minecraft:the_nether run scoreboard players operation @s portallink.tz *= #8 portallink.v
+execute if dimension minecraft:the_nether store result score @s portallink.tx run data get entity @s Pos[0] 8
+execute if dimension minecraft:the_nether store result score @s portallink.tz run data get entity @s Pos[2] 8
 execute if dimension minecraft:the_nether run scoreboard players set @s portallink.dim 0
 # keep the suggested height buildable in the Nether (below the bedrock roof, above the lava sea floor)
 execute if score @s portallink.dim matches 1 if score @s portallink.ty matches 118.. run scoreboard players set @s portallink.ty 117

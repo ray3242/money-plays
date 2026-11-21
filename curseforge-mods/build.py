@@ -39,7 +39,7 @@ def main():
                 'authors': ['ray3242'], 'license': 'MIT', 'icon': 'pack.png', 'environment': '*',
                 'contact': {'sources': 'https://github.com/ray3242/money-plays/tree/main/curseforge-mods'},
                 'depends': {'minecraft': '>=1.21', 'fabric-api': '*'}}, indent=2))
-            add(z, 'META-INF/neoforge.mods.toml', f'''modLoader="lowcodefml"
+            toml = f'''modLoader="lowcodefml"
 loaderVersion="[1,)"
 license="MIT"
 
@@ -57,6 +57,8 @@ type="required"
 versionRange="[1.21,)"
 ordering="NONE"
 side="BOTH"
-''')
+'''
+            add(z, 'META-INF/neoforge.mods.toml', toml)
+            add(z, 'META-INF/mods.toml', toml.replace('type="required"', 'mandatory=true'))  # Forge spelling
         print('built', pid)
 if __name__ == '__main__': main()
