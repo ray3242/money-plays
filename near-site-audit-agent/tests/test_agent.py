@@ -1,0 +1,173 @@
+"""End-to-end test against a mock marketplace and a local test site. Run: python3 -m unittest -v"""
+import json
+import os
+import sys
+import threading
+import unittest
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "agent"))
+import run  # noqa: E402
+from audit import UnsafeUrl, audit, check_public, extract_url  # noqa: E402
+from market import Market  # noqa: E402
+
+PAGE = b"""<!doctype html><html><head><title>Shop</title></head><body>
+<h1>One</h1><h1>Two</h1><h4>Skip</h4><img src="a.png"><img src="b.png" alt="b">
+<input type="text" id="q"><a href="/ok">ok</a><a href="/missing">gone</a>
+<script src="http://insecure.example/x.js"></script></body></html>"""
+
+
+class Site(BaseHTTPRequestHandler):
+    def log_message(self, *a):
+        pass
+
+    def do_HEAD(self):
+        self.do_GET()
+
+    def do_GET(self):
+        if self.path in ("/", "/ok"):
+            self.send_response(200)
+            self.send_header("Content-Type", "text/html")
+            self.end_headers()
+            if self.command == "GET":
+                self.wfile.write(PAGE)
+        else:
+            self.send_response(404)
+            self.end_headers()
+
+
+class MarketMock(BaseHTTPRequestHandler):
+    state = None
+
+    def log_message(self, *a):
+        pass
+
+    def _send(self, obj, code=200):
+        b = json.dumps(obj).encode()
+        self.send_response(code)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(b)))
+        self.end_headers()
+        self.wfile.write(b)
+
+    def _body(self):
+        n = int(self.headers.get("Content-Length") or 0)
+        return json.loads(self.rfile.read(n) or b"{}")
+
+    def do_GET(self):
+        s = self.state
+        if self.headers.get("Authorization") != "Bearer aat_test":
+            return self._send({"error": "unauthorized"}, 401)
+        if self.path == "/v1/agents/me/assignments":
+            return self._send({"assignments": s["rows"]})
+        if self.path.startswith("/v1/assignments/") and "/messages" in self.path:
+            aid = self.path.split("/")[3]
+            return self._send({"messages": list(reversed(s["threads"].get(aid, []))), "total": 0})
+        if self.path.startswith("/v1/jobs/board"):
+            return self._send({"jobs": s["board"]})
+        self._send({}, 404)
+
+    def do_POST(self):
+        s = self.state
+        parts = self.path.split("/")
+        body = self._body()
+        if parts[2] == "assignments":
+            aid, action = parts[3], parts[4]
+            if action == "start":
+                s["started"].append(aid)
+            elif action == "messages":
+                s["threads"].setdefault(aid, []).append({"body": body["body"], "senderAgentId": "agent"})
+            elif action == "submit":
+                s["submitted"][aid] = body["deliverableMarkdown"]
+            return self._send({})
+        if parts[2] == "jobs" and parts[4] == "bids":
+            s["bids"][parts[3]] = body
+            return self._send({})
+        self._send({}, 404)
+
+
+def serve(handler):
+    srv = ThreadingHTTPServer(("127.0.0.1", 0), handler)
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    return srv, f"http://127.0.0.1:{srv.server_address[1]}"
+
+
+def row(aid, desc, **kw):
+    a = {"assignmentId": aid, "status": "in_progress", "startedAt": None, "submittedAt": None, "deliverableUrl": None}
+    a.update(kw)
+    return {"assignment": a, "job": {"title": "Job", "description": desc}, "latestMessage": None}
+
+
+class AgentTest(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.site, cls.site_url = serve(Site)
+        cls.mock, cls.mock_url = serve(MarketMock)
+
+    def setUp(self):
+        MarketMock.state = {"rows": [], "threads": {}, "started": [], "submitted": {}, "bids": {}, "board": []}
+        self.s = MarketMock.state
+        self.m = Market("aat_test", self.mock_url)
+
+    def test_extract_url(self):
+        self.assertEqual(extract_url("Audit https://a.io/x, please."), "https://a.io/x")
+        self.assertEqual(extract_url("check shop.example.com/pricing now"), "https://shop.example.com/pricing")
+        self.assertIsNone(extract_url("audit my site"))
+
+    def test_private_addresses_refused(self):
+        for u in ("http://127.0.0.1/", "http://169.254.169.254/latest", "file:///etc/passwd", "http://localhost:8080"):
+            with self.assertRaises(UnsafeUrl):
+                check_public(u)
+
+    def test_audit_findings(self):
+        md, summary = audit(self.site_url + "/", allow_private=True)
+        for needle in ("no meta description", "2 `<h1>` headings", "1 of 2 images have no `alt`", "no viewport",
+                       "1 form field(s) have no label", "served over plain HTTP", "1 of 2 checked links are broken",
+                       "/missing", "load over http://", "Heading levels skip", "Fix these first"):
+            self.assertIn(needle, md)
+        self.assertIn("score", summary)
+
+    def test_job_is_started_and_delivered(self):
+        self.s["rows"] = [row("a1", f"Please audit {self.site_url}/")]
+        self.assertEqual(run.handle(self.m, self.s["rows"][0], allow_private=True), "submitted")
+        self.assertEqual(self.s["started"], ["a1"])
+        self.assertIn("# Website audit", self.s["submitted"]["a1"])
+
+    def test_missing_url_asks_once_then_uses_reply(self):
+        r = row("a2", "audit my site")
+        self.assertEqual(run.handle(self.m, r, allow_private=True), "waiting")
+        self.assertEqual(run.handle(self.m, r, allow_private=True), "waiting")
+        self.assertEqual(len(self.s["threads"]["a2"]), 1)
+        self.assertEqual(self.s["started"], [])
+        self.s["threads"]["a2"].append({"body": f"it is {self.site_url}/", "senderAgentId": None})
+        self.assertEqual(run.handle(self.m, r, allow_private=True), "submitted")
+
+    def test_private_url_gets_an_honest_deliverable(self):
+        self.assertEqual(run.handle(self.m, row("a3", "audit http://127.0.0.1:1/")), "submitted")
+        self.assertIn("not possible", self.s["submitted"]["a3"])
+
+    def test_finished_rows_are_skipped(self):
+        self.assertEqual(run.handle(self.m, row("a4", "audit https://x.io", status="submitted")), "skip")
+
+    def test_rework_uses_url_from_feedback(self):
+        r = row("a5", "audit https://old.example", submittedAt="2026-01-01T00:00:00Z", startedAt="2026-01-01T00:00:00Z")
+        r["latestMessage"] = {"body": f"wrong page, use {self.site_url}/ok"}
+        run.handle(self.m, r, allow_private=True)
+        self.assertIn("/ok", self.s["submitted"]["a5"])
+
+    def test_bids_only_on_matching_jobs(self):
+        self.s["board"] = [
+            {"jobId": "j1", "title": "SEO audit", "description": "audit https://shop.io", "budgetToken": "USDC", "budgetAmount": "10"},
+            {"jobId": "j2", "title": "Write a poem", "description": "about https://shop.io", "budgetToken": "USDC"},
+            {"jobId": "j3", "title": "SEO audit", "description": "audit https://shop.io", "budgetToken": "USD"},
+            {"jobId": "j4", "title": "SEO audit", "description": "https://shop.io", "budgetToken": "USDC", "minBuilderVerification": "identity"},
+            {"jobId": "j5", "title": "SEO audit", "description": "https://shop.io", "jobKind": "competition"},
+            {"jobId": "j6", "title": "SEO audit", "description": "https://shop.io", "budgetToken": "USDC", "budgetAmount": "1"},
+        ]
+        run.maybe_bid(self.m, set())
+        self.assertEqual(list(self.s["bids"]), ["j1"])
+        self.assertEqual(self.s["bids"]["j1"]["amount"], "3.00")
+
+
+if __name__ == "__main__":
+    unittest.main()
