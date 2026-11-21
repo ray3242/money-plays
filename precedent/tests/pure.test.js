@@ -50,6 +50,19 @@ describe('ship confidence', () => {
     input.fields.issuelinks = [{ type: { outward: 'blocks' }, outwardIssue: { fields: { resolution: { name: 'Fixed' }, issuetype: { name: 'Bug' } } } }, { type: { inward: 'is blocked by' }, inwardIssue: { fields: { status: { statusCategory: { key: 'done' } } } } }];
     expect(shipConfidence(input, { decisions: [{ issueKey: 'OTHER-1', status: 'superseded' }] }).factors).toEqual([]);
   });
+  it('counts each unresolved linked bug once across link types and directions', () => {
+    const input = issue();
+    const bug = { key: 'APP-2', fields: { issuetype: { name: 'Bug' } } };
+    input.fields.issuelinks = [
+      { type: { outward: 'relates to' }, outwardIssue: bug },
+      { type: { inward: 'is duplicated by' }, inwardIssue: { ...bug } },
+      { type: { outward: 'blocks' }, outwardIssue: { ...bug } },
+      { outwardIssue: { ...bug, key: 'APP-3', fields: { ...bug.fields, resolution: { name: 'Fixed' } } } }
+    ];
+    expect(shipConfidence(input)).toMatchObject({ score: 92, factors: [{ id: 'linked-bugs', impact: -8, evidence: 'APP-2' }] });
+    input.fields.issuelinks.push({ inwardIssue: { ...bug, key: 'APP-4' } });
+    expect(shipConfidence(input)).toMatchObject({ score: 84, factors: [{ id: 'linked-bugs', impact: -16, evidence: 'APP-2, APP-4' }] });
+  });
   it('detects custom Done-category transitions without counting done-to-done', () => {
     const input = issue();
     input.statusCategories = { 1: 'done', 2: 'indeterminate', 3: 'done' };

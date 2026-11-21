@@ -6,7 +6,9 @@ export function shipConfidence(issue, precedent = {}) {
   const add = (id, label, impact, evidence, link) => { if (impact) factors.push({ id, label, impact, evidence, ...(link ? { link } : {}) }); };
   const links = issue.fields?.issuelinks ?? [];
   const blockers = links.filter(link => link.inwardIssue && /is blocked by/i.test(link.type?.inward ?? '') && !done(link.inwardIssue.fields));
-  const bugs = links.map(link => link.inwardIssue ?? link.outwardIssue).filter(linked => linked?.fields?.issuetype?.name?.toLowerCase() === 'bug' && !done(linked.fields));
+  const bugs = [...new Map(links.map(link => link.inwardIssue ?? link.outwardIssue)
+    .filter(linked => linked?.fields?.issuetype?.name?.toLowerCase() === 'bug' && !done(linked.fields))
+    .map(linked => [linked.key, linked])).values()];
   add('blockers', 'Unresolved blockers', -Math.min(30, blockers.length * 15), blockers.map(link => link.inwardIssue.key).join(', '));
   add('linked-bugs', 'Unresolved linked bugs', -Math.min(24, bugs.length * 8), bugs.map(link => link.key).join(', '));
   const histories = issue.changelog?.histories ?? [];
