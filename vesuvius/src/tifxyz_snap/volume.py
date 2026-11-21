@@ -201,7 +201,7 @@ class ZarrVolume:
         return res.reshape(np.asarray(zyx).shape[:-1])
 
     def _sample_block(self, g, lo, hi, order, map_coordinates):
-        sub = self.read(lo, hi)
+        sub = self.read(lo, hi).astype(np.float32)  # map_coordinates rejects float16
         out = np.empty(len(g), dtype=np.float32)
         map_coordinates(sub, (g - lo).T, output=out, order=order, mode="nearest", prefilter=order > 1)
         return out
