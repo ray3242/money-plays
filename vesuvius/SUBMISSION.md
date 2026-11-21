@@ -39,7 +39,7 @@ tifxyz-snap is a CPU-only label-snapping tool for the "label snapping" direction
 - Cross sections (input in red, snapped in cyan) and before/after flattened textures with fibres visible and no sheet jumps are in the README.
 - Limitations stated plainly: no hand-checked ground truth yet, no ink-detection measurement yet, one segment of one scroll, and a 4-9% tail that can lock onto a neighbouring edge under large perturbations.
 
-MIT licensed. 12 regression tests on a synthetic sheet with known ground truth; usefulness claims rest on the real-scroll runs.
+MIT licensed. 17 regression tests on a synthetic sheet with known ground truth; usefulness claims rest on the real-scroll runs.
 
 ## In your own words (please write this part yourself)
 
