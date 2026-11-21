@@ -1,0 +1,30 @@
+# Precedent — design (Codegeist 2026)
+
+Category: Apps for Software Teams. Bonuses: Best Agents (rovo:agent + actions), Best app with Atlassian MCP (rovo:mcp exposing the same actions), Teamwork Graph (optional read enrichment, graceful fallback).
+Pitch: "Before you ship, know what's already been decided and what happened last time." Teams re-litigate settled decisions and repeat past incidents because the history is scattered across old Jira issues and Confluence pages. Precedent surfaces it on every Jira issue, scores ship readiness with explainable evidence, and keeps a decision ledger that Rovo (and any MCP client) can query and write.
+
+Constraints: free only. No Forge LLM calls (costs money). No external egress (only Atlassian product APIs + Forge KVS) -> "runs on Atlassian". All logic deterministic and explainable. asUser() for user-triggered calls so permissions are respected.
+
+## Backend (src/, ESM, Node runtime nodejs22.x or the template's current default)
+- lib/adf.js: Atlassian Document Format -> plain text (recursive, handles text/hardBreak/mention/inlineCard, caps length).
+- lib/keywords.js: deterministic keyword extraction from summary+description+labels+components (lowercase, stopwords incl. jira filler words, min length 3, summary terms weighted x3, top N=6). Also a JQL/CQL-safe phrase escaper (strip quotes/backslashes/reserved chars).
+- lib/jira.js: getIssue(key) with fields summary, description, status, statuscategory, issuetype, priority, labels, components, assignee, resolution, resolutiondate, issuelinks, created, updated + expand=changelog; searchJql(jql, fields, max) via POST /rest/api/3/search/jql.
+- lib/confluence.js: searchCql(cql, limit) via /wiki/rest/api/search; returns {id,title,url,excerpt,lastModified,labels?}.
+- lib/precedent.js: buildPrecedent(issueKey): issue + keywords -> (a) similar resolved issues in the same project (text ~ keywords, resolution is not EMPTY, key != self, order by resolved DESC, max 8), each with a relevance score = keyword overlap and a "kind" (bug/incident/revert if issuetype Bug or labels incident/hotfix/revert/rollback/regression); (b) Confluence decision pages (label in (decision, adr, "decision-record") OR title ~ "decision"/"ADR") AND text ~ keyword phrase, max 6; Confluence failure (not installed/no permission) -> empty list + warning, never a crash; (c) ledger decisions matching keywords/components/issue; (d) "people with context": distinct assignees of precedent issues ranked by count; (e) optional Teamwork Graph enrichment (lib/twg.js, asUser().requestTeamworkGraph with a documented curated query relevant to the issue; any error/empty -> skipped with a note).
+- lib/score.js: shipConfidence(issue, precedent) -> {score 0-100, grade: "Ready"|"Caution"|"At risk", factors:[{id,label,impact(neg/pos int),evidence, link?}]}. Start 100; deductions: unresolved "is blocked by" links (-15 each, cap -30), unresolved linked bugs (-8 each, cap -24), reopen count from changelog (status moved from Done-category back) (-10 each, cap -20), missing/short description or no acceptance criteria marker ("acceptance criteria", "AC:", "given/when/then", checklist) (-10), past incidents/regressions among precedents (-6 each, cap -18), conflicting ledger decision status "superseded" referenced (-5); bonus +5 if an accepted decision is linked to this issue. Clamp 0..100. Grade >=80 Ready, >=55 Caution, else At risk. Pure function, fully unit tested.
+- lib/decisions.js (@forge/kvs): ledger entries {id, title, decision, rationale, status: accepted|superseded|proposed, issueKey?, projectKey?, tags[], authorAccountId, createdAt, supersededBy?}. Keys `decision:<createdAtMillis>-<rand>`. create (validate lengths: title<=120, decision<=2000, rationale<=2000, tags<=8), list (kvs.query with startsWith prefix, paginate cursor, newest first), search(text, filters) in memory over list (cap 500), supersede(id, byId), get(id).
+- resolver.js (Custom UI): getIssueContext({issueKey from context.extension.issue.key}), recordDecision, supersedeDecision, listDecisions({query,status,projectKey}).
+- actions.js (Rovo actions, handler(payload, context), inputs top-level, issue key falls back to payload.context.jira.issueKey; validate issue key regex /^[A-Z][A-Z0-9_]+-\d+$/): get-issue-precedent (GET), assess-ship-readiness (GET), search-decisions (GET, query), record-decision (CREATE: title, decision, rationale, issueKey?). Return compact JSON with links so the agent can cite.
+
+## Manifest
+jira:issuePanel (Custom UI, static/panel), jira:projectPage "Decision Ledger" (Custom UI, static/ledger or same bundle with a route param), rovo:agent "Precedent" (prompt: cite sources, never invent; always run get-issue-precedent first; explain score factors; ask confirmation before record-decision), conversationStarters, actions list, rovo:mcp exposing the 4 actions, functions, scopes: read:jira-work, read:jira-user, search:confluence (+ read:confluence-content.summary if needed), storage:app, TWG read scopes. No external fetch permissions.
+
+## Frontend (Vite + React, two entry points or one app routed by module key)
+Premium design per taste skill (~/.agents/skills/design-taste-frontend/SKILL.md) but must fit inside Jira: use Atlassian design tokens (@atlaskit/tokens + view.theme.enable() for light/dark) and system font. Panel: score ring + grade + top factors (expandable evidence), tabs/sections "Precedents", "Decisions", "People with context"; "Record decision" inline form; skeleton loading, empty and error states. Ledger page: search, status filter chips, decision cards, supersede flow.
+Local preview: when not inside Forge (no window.__bridge), use a mock bridge with realistic fixture data so `npm run preview` renders it standalone for screenshots.
+
+## Tests
+Vitest: adf, keywords, score, decisions (mock @forge/kvs), precedent orchestration + actions (mock @forge/api), resolver validation.
+
+## Docs
+README, SUBMISSION.md (Devpost fields), DEMO_SCRIPT.md (<5 min), HANDOFF.md (accounts + exact steps), scripts/seed-demo.mjs (seeds demo Jira issues/Confluence pages on Rayhan's dev site via REST with his email + API token from env).

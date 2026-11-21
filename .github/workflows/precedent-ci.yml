@@ -1,0 +1,27 @@
+name: precedent-ci
+on:
+  push:
+    branches: [main]
+    paths: ["precedent/**", ".github/workflows/precedent-ci.yml"]
+  pull_request:
+    paths: ["precedent/**", ".github/workflows/precedent-ci.yml"]
+permissions:
+  contents: read
+defaults:
+  run:
+    working-directory: precedent
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: precedent/package-lock.json
+      - run: npm ci
+      - run: npm run build
+      - run: npm test
+      - run: npm run validate:manifest
+      - run: node scripts/seed-demo.mjs --dry-run
