@@ -48,8 +48,8 @@ def sample_profiles(surf: TifXYZ, volume, cfg: SnapConfig, extra: float = 0.0, p
     valid = surf.valid
     pts = surf.zyx.astype(np.float64) * cfg.scale
     tu, tv, n, ok = frames(pts, valid, cfg.normal_smooth)
-    reach = cfg.search + extra
-    offs = np.arange(-reach, reach + cfg.step / 2, cfg.step)
+    n_reach = int(np.floor(cfg.search / cfg.step + 1e-9)) + int(np.ceil(extra / cfg.step - 1e-9))
+    offs = np.arange(-n_reach, n_reach + 1) * cfg.step
     h, w = valid.shape
     prof = np.zeros((h, w, len(offs)), dtype=np.float32)
     k = np.arange(-cfg.patch, cfg.patch + 1) * cfg.patch_spacing
@@ -113,7 +113,11 @@ def solve(prof: np.ndarray, offs_full: np.ndarray, ok: np.ndarray, cfg: SnapConf
     keep = np.abs(offs_full) <= cfg.search + 1e-6
     total = aggregate(cost_full[..., keep], active, cfg.smooth_lambda, cfg.smooth_trunc)
     idx, conf = argmin_subpixel(total)
-    off = np.where(active, offs_full[keep][0] + idx * cfg.step, np.nan)
+    offs = offs_full[keep]
+    flat = (total.max(-1) - total.min(-1)) <= 1e-6  # no edge anywhere in range: stay put
+    idx = np.where(flat, float(np.argmin(np.abs(offs))), idx)
+    conf = np.where(flat, 0.0, conf)
+    off = np.where(active, offs[0] + idx * cfg.step, np.nan)
     conf = np.where(active, conf, 0.0).astype(np.float32)
     if cfg.post_sigma > 0:
         off = nan_gaussian(off, cfg.post_sigma, weights=conf + 0.05)

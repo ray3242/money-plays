@@ -154,6 +154,12 @@ def offset_figure(offset: np.ndarray, confidence: np.ndarray, path, search: floa
     ax[1].set_title("confidence (0 = ambiguous, 1 = unique minimum)")
     fig.colorbar(im, ax=ax[1], fraction=0.02)
     o = offset[np.isfinite(offset)]
+    if o.size == 0:
+        ax[2].set_title("no vertex had CT signal")
+        fig.tight_layout()
+        fig.savefig(path, dpi=80)
+        plt.close(fig)
+        return
     ax[2].hist(o, bins=np.arange(-search, search + 0.25, 0.25), color="#4477aa")
     ax[2].set_xlabel("offset (voxels)")
     ax[2].set_ylabel("vertices")

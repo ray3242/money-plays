@@ -16,6 +16,8 @@ from pathlib import Path
 
 import numpy as np
 
+SAFE_CODECS = frozenset({"blosc", "zstd", "gzip", "zlib", "lz4", "bz2", "lzma"})
+
 
 def _is_url(s: str) -> bool:
     return s.startswith(("http://", "https://"))
@@ -40,10 +42,19 @@ class ZarrVolume:
         self._lock = threading.Lock()
         self._mem: OrderedDict[tuple[int, int, int], np.ndarray | None] = OrderedDict()
         self._mem_chunks = mem_chunks
+        self.block = 256
+        self.max_block_voxels = 512**3
         self.fetched_bytes = 0
         self.fetched_chunks = 0
 
-        zarray = json.loads(self._read_bytes(f"{self.level}/.zarray"))
+        raw = self._read_bytes(f"{self.level}/.zarray")
+        self.array_path = f"{self.level}/"
+        if raw is None:
+            raw = self._read_bytes(".zarray")  # standalone array, no pyramid levels
+            self.array_path = ""
+        if raw is None:
+            raise FileNotFoundError(f"no .zarray at {self.root}/{self.level} or {self.root}")
+        zarray = json.loads(raw)
         if zarray.get("zarr_format", 2) != 2:
             raise ValueError("only Zarr v2 arrays are supported")
         self.shape = tuple(zarray["shape"])
@@ -61,6 +72,8 @@ class ZarrVolume:
         if comp is not None:
             import numcodecs
 
+            if comp.get("id") not in SAFE_CODECS:
+                raise ValueError(f"unsupported Zarr compressor {comp.get('id')!r}; allowed: {sorted(SAFE_CODECS)}")
             self._codec = numcodecs.get_codec(comp)
 
         self.cache_dir = None
@@ -112,7 +125,7 @@ class ZarrVolume:
                 raw = None  # cached "missing chunk" marker
             arr = self._decode(raw) if raw is not None else None
         else:
-            raw = self._read_bytes(f"{self.level}/{name}")
+            raw = self._read_bytes(f"{self.array_path}{name}")
             if raw is not None:
                 self.fetched_bytes += len(raw)
                 self.fetched_chunks += 1
@@ -166,8 +179,31 @@ class ZarrVolume:
         res = np.zeros(len(pts), dtype=np.float32)
         if good.any():
             g = pts[good]
-            lo = np.floor(g.min(0)).astype(np.int64) - 2
-            hi = np.ceil(g.max(0)).astype(np.int64) + 3
-            sub = self.read(lo, hi).astype(np.float32)
-            res[good] = map_coordinates(sub, (g - lo).T, order=order, mode="nearest", prefilter=order > 1)
+            # spline prefiltering (order > 1) depends on voxels well beyond the stencil
+            halo = 2 if order <= 1 else 10
+            lo = np.floor(g.min(0)).astype(np.int64) - halo
+            hi = np.ceil(g.max(0)).astype(np.int64) + halo + 1
+            if np.prod(hi - lo) <= self.max_block_voxels:
+                res[good] = self._sample_block(g, lo, hi, order, map_coordinates)
+            else:
+                # Points spread over a large region (curved surfaces): sample per block so only the
+                # chunks actually touched are held densely, never the whole bounding box.
+                keys = np.floor(g / self.block).astype(np.int64)
+                _, inv = np.unique(keys, axis=0, return_inverse=True)
+                inv = inv.reshape(-1)
+                order_idx = np.argsort(inv, kind="stable")
+                bounds = np.flatnonzero(np.diff(inv[order_idx])) + 1
+                vals = np.empty(len(g), dtype=np.float32)
+                for idx in np.split(order_idx, bounds):
+                    gb = g[idx]
+                    blo = np.floor(gb.min(0)).astype(np.int64) - halo
+                    bhi = np.ceil(gb.max(0)).astype(np.int64) + halo + 1
+                    vals[idx] = self._sample_block(gb, blo, bhi, order, map_coordinates)
+                res[good] = vals
         return res.reshape(np.asarray(zyx).shape[:-1])
+
+    def _sample_block(self, g, lo, hi, order, map_coordinates):
+        sub = self.read(lo, hi).astype(np.float32)  # map_coordinates rejects float16
+        out = np.empty(len(g), dtype=np.float32)
+        map_coordinates(sub, (g - lo).T, output=out, order=order, mode="nearest", prefilter=order > 1)
+        return out

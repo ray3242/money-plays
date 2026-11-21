@@ -26,3 +26,9 @@ for run in "${RUNS[@]}"; do
 done
 
 python "$(dirname "$0")/cross_scan_agreement.py" "$WORK/out"
+
+# texture figure inputs (9.362 um scan): input vs snapped surface
+V9=$B/volumes/20250804134230-9.362um-1.2m-113keV-masked.zarr
+for s in in out; do
+  tifxyz-snap render "$WORK/$s/scan_9.362um" "$V9" --cache "$CACHE" --upsample 8 --window 40 110 20 160 --half-thickness 1 -o "$WORK/texture_$s.png"
+done

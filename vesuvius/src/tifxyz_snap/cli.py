@@ -112,7 +112,7 @@ def cmd_validate(args) -> int:
     for rms in args.rms:
         m, _, _ = perturbation_recovery(surf, vol, cfg, rms=rms, corr=args.corr, seed=args.seed, base=base)
         rows.append(m)
-        print(json.dumps({k: round(v, 3) for k, v in m.items()}))
+        print(json.dumps({k: v if v is None else round(v, 3) for k, v in m.items()}))
     if args.output:
         Path(args.output).write_text(json.dumps({"config": base.config, "results": rows}, indent=2))
     return 0

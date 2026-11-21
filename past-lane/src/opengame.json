@@ -1,0 +1,12 @@
+{
+  "$schema": "https://opengame.io/schema/opengame.json",
+  "title": "Past Lane",
+  "tagline": "Every lap you drive comes back at you, head-on.",
+  "description": "An arcade racer where your own past laps are the traffic. After each lap, a ghost of that lap drives the circuit in reverse on the exact line you took. Dodge them, skim past for near-miss combos and nitro, and clear six circuits plus a new daily track.",
+  "genre": "racing-sports",
+  "kind": "game",
+  "controls": [
+    "keyboard"
+  ],
+  "players": "auto"
+}

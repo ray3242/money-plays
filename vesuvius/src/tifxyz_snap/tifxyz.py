@@ -28,7 +28,7 @@ class TifXYZ:
 
     @property
     def valid(self) -> np.ndarray:
-        return np.isfinite(self.z) & (self.z > 0) & (self.x != -1)
+        return np.isfinite(self.z) & (self.z >= 0) & (self.x != -1)
 
     @property
     def xyz(self) -> np.ndarray:
