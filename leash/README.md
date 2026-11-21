@@ -6,7 +6,7 @@ Leash lets a business hand bill-paying to an AI agent without handing over its m
 
 Built for the [QDay Aevum Builder Challenge #1](https://qday.io/builder-challenge) (Agentic Payments, AI Fraud Prevention and Confirmation of Payee tracks).
 
-- Live demo: **https://ray3242.github.io/money-plays/leash/**
+- Live demo: **https://ray3242.github.io/leash/**
 - Status: contracts are tested on a local chain; the Aevum Testnet deployment (chain 44005) is pending test tokens, and the addresses will be listed here. Pays in tUSD8 `0x456569838f1d43009A91ebA4263147Afd7233483`
 
 ![Leash web app](docs/screenshot.png)
