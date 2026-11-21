@@ -281,6 +281,11 @@ class Crew:
         m, role = self.meko, "scribe"
         who = self.agent(role)
         reused = bool(fix_step and fix_step.get("cites")) and not brain.conflict
+
+        def spend(text):  # writing memory costs tokens too, so it counts toward the incident
+            tk = tokens.count(text)
+            r["out_tokens"] += tk
+            r["tokens"] += tk
         if inc.resolved and not reused:
             confirm = next((s["tool"] for s in reversed(r["steps"]) if s["type"] == "diagnose"), "metrics")
             replaces = None
@@ -293,6 +298,7 @@ class Crew:
             dead = [(a, g) for a, g in failed if not replaces or a != replaces[0]]
             text = learning_text(inc.id, self.shift, inc.s.service, inc.alert, fix_step.get("evidence") or last.get("message", ""), confirm,
                                  (fix_step["action"], fix_step["args"]), guard_used, dead, replaces)
+            spend(text)
             mid = m.remember(self._thread(conv, role), who, text, {"kind": "learning", "incident": inc.id, "service": inc.s.service, "shift": self.shift})
             self.emit(inc, role, "learn", "Fix verified by the cleared alert. Wrote it down as a private memory.", memory_id=mid, memory=text)
             try:
@@ -311,6 +317,7 @@ class Crew:
             r["reused"] = fix_step["cites"][0]["label"]
         else:
             note = f"Open incident {inc.id} on {inc.s.service} (shift {self.shift}): '{inc.alert}' is NOT resolved. Already tried: " + ("; ".join(fmt_action(a, g) for a, g in failed) or "nothing") + "."
+            spend(note)
             mid = m.remember(self._thread(conv, role), who, note, {"kind": "handoff", "incident": inc.id})
             self.emit(inc, role, "learn", "Unresolved: left a private handoff note for the next shift (not promoted, because it is not verified).", memory_id=mid, memory=note)
 

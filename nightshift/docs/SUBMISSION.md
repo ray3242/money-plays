@@ -21,8 +21,8 @@ simulated e-commerce stack that runs on a three-node YugabyteDB cluster. Every n
 crew takes the pager. The only thing that carries over is a shared Meko datapack.
 
 To show what that memory is worth, every incident is run twice: by an identical crew with no memory,
-and by the crew on Meko. Over three nights and 39 incidents the Meko crew goes from 3.8% more tokens
-on night 1 (writing things down costs something) to 37% fewer on night 2 and 65% fewer on night 3,
+and by the crew on Meko. Over three nights and 39 incidents the Meko crew goes from 8.6% more tokens
+on night 1 (writing things down costs something) to 35% fewer on night 2 and 65% fewer on night 3 (memory writes included),
 and from 7 failed production changes a night to zero.
 
 ## How it uses Meko

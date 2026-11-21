@@ -20,15 +20,15 @@ three-node YugabyteDB cluster. Numbers are from the committed run in `web/replay
 
 | Night | Incidents | Tokens (no memory) | Tokens (Meko) | Saved | Failed prod changes (no memory / Meko) | Time to resolve (no memory / Meko) | Fixes reused | New learnings |
 |---|---|---|---|---|---|---|---|---|
-| Night 1 (alpha) | 12 | 21,034 | 21,840 | -3.8% | 7 / 5 | 71 min / 64 min | 0 | 12 |
-| Night 2 (bravo) | 13 | 22,901 | 14,418 | 37.0% | 7 / 2 | 74 min / 41 min | 7 | 6 |
-| Night 3 (charlie) | 14 | 24,474 | 8,514 | 65.2% | 7 / 0 | 77 min / 23 min | 13 | 1 |
+| Night 1 (alpha) | 12 | 21,034 | 22,834 | -8.6% | 7 / 5 | 71 min / 64 min | 0 | 12 |
+| Night 2 (bravo) | 13 | 22,901 | 14,916 | 34.9% | 7 / 2 | 74 min / 41 min | 7 | 6 |
+| Night 3 (charlie) | 14 | 24,474 | 8,613 | 64.8% | 7 / 0 | 77 min / 23 min | 13 | 1 |
 
-Across all three nights: 68,409 tokens without memory, 44,772 with Meko (34.6% fewer), 21 failed production changes against 7.
+Across all three nights: 68,409 tokens without memory, 46,363 with Meko (32.2% fewer, counting the tokens spent writing memory), 21 failed production changes against 7.
 
 Read it honestly:
 
-- **Night 1 costs more with Meko** (-3.8%). Nothing is known yet and writing things down is not free.
+- **Night 1 costs more with Meko** (-8.6%). Nothing is known yet and writing things down is not free.
 - **Night 2** uses reworded alerts. Meko's semantic search finds 7 of the 12 earlier fixes; the 5
   it misses are solved the slow way and written down again under the new wording.
 - **Night 3** reuses 13 of 14 and makes zero failed production changes.
