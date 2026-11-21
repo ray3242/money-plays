@@ -1,6 +1,6 @@
 # Minecraft helper packs (CurseForge)
 
-Four small, separate utilities for Minecraft Java 1.21 to 26.3. Each is a data pack, also packaged as a no-code mod jar for Fabric/Quilt and NeoForge.
+Four small, separate utilities for Minecraft Java 1.21 to 26.3. Each is a data pack, also packaged as a no-code mod jar for Fabric/Quilt, NeoForge and Forge.
 
 | Pack | Command | What it does |
 |---|---|---|
@@ -14,7 +14,7 @@ Ready-to-upload files are in [`dist/`](dist). `python3 build.py` rebuilds them f
 ## Layout
 
 - `packs/<name>/` is a working data pack folder: `pack.mcmeta`, `data/`, and `overlay_modern/` (the same chat text with the click/hover spelling Minecraft 1.21.5+ expects). `LISTING.md` is the store page text, `pack.png` the icon.
-- `build.py` zips each pack and builds the jar (adds `fabric.mod.json` and `META-INF/neoforge.mods.toml`).
+- `build.py` zips each pack and builds the jar (adds `fabric.mod.json`, `META-INF/neoforge.mods.toml` and `META-INF/mods.toml` for Forge).
 - `tests/` is the end-to-end suite.
 
 ## Tests
@@ -27,8 +27,9 @@ Ready-to-upload files are in [`dist/`](dist). `python3 build.py` rebuilds them f
 | Fabric 1.21.11 | data pack folders, then mod jars | 50/50 (server state + client) |
 | Fabric 26.3 | data pack folders, then mod jars | 28/28 (server state only: no client library speaks 26.3 yet) |
 | NeoForge 21.1.200 (1.21.1) | mod jars | 50/50 (server state + client) |
+| Forge 52.1.20 (1.21.1) | mod jars | 51/51 (server state + client, 1.0.1 suite) |
 
-Not tested: Forge, Quilt (expected to work through the Fabric metadata), and how the particles look in the real game client. See [`tests/README.md`](tests/README.md) to run it yourself.
+Not tested: Quilt (expected to work through the Fabric metadata), and how the particles look in the real game client. See [`tests/README.md`](tests/README.md) to run it yourself.
 
 ## AI disclosure
 
