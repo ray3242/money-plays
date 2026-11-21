@@ -91,3 +91,38 @@ def test_volume_sample_blockwise_matches_dense(tmp_path):
     dense = v.sample(pts)
     v.block, v.max_block_voxels = 16, 1
     np.testing.assert_allclose(v.sample(pts), dense, atol=1e-4)
+
+
+def test_z_zero_is_a_valid_vertex():
+    from tifxyz_snap.tifxyz import TifXYZ
+
+    s = TifXYZ(x=np.ones((2, 2), np.float32), y=np.ones((2, 2), np.float32), z=np.zeros((2, 2), np.float32), meta={})
+    assert s.valid.all()
+
+
+def test_standalone_zarr_array_and_unsafe_codec(tmp_path):
+    import pytest
+    from conftest import write_zarr
+
+    vol = np.arange(40**3, dtype=np.uint32).reshape(40, 40, 40).astype(np.uint8)
+    root = write_zarr(tmp_path / "s.zarr", vol)
+    flat = tmp_path / "flat.zarr"
+    (root / "0").rename(flat)
+    np.testing.assert_array_equal(ZarrVolume(str(flat)).read((0, 0, 0), (40, 40, 40)), vol)
+    meta = json.loads((flat / ".zarray").read_text())
+    meta["compressor"] = {"id": "pickle"}
+    (flat / ".zarray").write_text(json.dumps(meta))
+    with pytest.raises(ValueError, match="unsupported"):
+        ZarrVolume(str(flat))
+
+
+def test_cli_on_empty_volume_writes_report(sheet_scene, tmp_path, capsys):
+    from conftest import write_zarr
+
+    _, make, _ = sheet_scene
+    root = write_zarr(tmp_path / "empty.zarr", np.zeros((96, 160, 160), np.uint8))
+    write_tifxyz(tmp_path / "in", make(0.0))
+    out = tmp_path / "out"
+    assert main(["snap", str(tmp_path / "in"), str(root), "-o", str(out), "--search", "6", "--patch", "1", "--sigma", "1"]) == 0
+    assert json.loads((out / "snap_report.json").read_text())["vertices"] == 0
+    assert main(["validate", str(tmp_path / "in"), str(root), "--search", "6", "--patch", "1", "--sigma", "1"]) == 0

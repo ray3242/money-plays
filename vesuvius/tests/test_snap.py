@@ -63,3 +63,20 @@ def test_perturbation_recovery(sheet_scene):
     m, _, _ = perturbation_recovery(make(1.0), vol, SnapConfig(target="edge-", **CFG), rms=1.5, corr=4)
     assert m["residual_rms_vox"] < 0.4 * m["perturbation_rms_vox"]
     assert m["within_1_vox"] > 0.95
+
+
+def test_uniform_bright_region_does_not_move(sheet_scene, tmp_path):
+    from conftest import write_zarr
+
+    root = write_zarr(tmp_path / "flat.zarr", np.full((96, 160, 160), 100, np.uint8))
+    _, make, _ = sheet_scene
+    surf = make(0.0)
+    res = snap(surf, ZarrVolume(str(root)), SnapConfig(**CFG))
+    np.testing.assert_allclose(res.surface.z, surf.z, atol=1e-4)
+
+
+def test_small_search_keeps_zero_candidate(sheet_scene):
+    root, make, _ = sheet_scene
+    surf = make(0.0)
+    res = snap(surf, ZarrVolume(str(root)), SnapConfig(search=0.2, step=1.0, sigma=1.05, patch=1, patch_spacing=1.5))
+    assert np.nanmax(np.abs(res.offset)) <= 0.2 + 1e-6

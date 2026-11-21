@@ -16,6 +16,8 @@ from pathlib import Path
 
 import numpy as np
 
+SAFE_CODECS = frozenset({"blosc", "zstd", "gzip", "zlib", "lz4", "bz2", "lzma"})
+
 
 def _is_url(s: str) -> bool:
     return s.startswith(("http://", "https://"))
@@ -45,7 +47,14 @@ class ZarrVolume:
         self.fetched_bytes = 0
         self.fetched_chunks = 0
 
-        zarray = json.loads(self._read_bytes(f"{self.level}/.zarray"))
+        raw = self._read_bytes(f"{self.level}/.zarray")
+        self.array_path = f"{self.level}/"
+        if raw is None:
+            raw = self._read_bytes(".zarray")  # standalone array, no pyramid levels
+            self.array_path = ""
+        if raw is None:
+            raise FileNotFoundError(f"no .zarray at {self.root}/{self.level} or {self.root}")
+        zarray = json.loads(raw)
         if zarray.get("zarr_format", 2) != 2:
             raise ValueError("only Zarr v2 arrays are supported")
         self.shape = tuple(zarray["shape"])
@@ -63,6 +72,8 @@ class ZarrVolume:
         if comp is not None:
             import numcodecs
 
+            if comp.get("id") not in SAFE_CODECS:
+                raise ValueError(f"unsupported Zarr compressor {comp.get('id')!r}; allowed: {sorted(SAFE_CODECS)}")
             self._codec = numcodecs.get_codec(comp)
 
         self.cache_dir = None
@@ -114,7 +125,7 @@ class ZarrVolume:
                 raw = None  # cached "missing chunk" marker
             arr = self._decode(raw) if raw is not None else None
         else:
-            raw = self._read_bytes(f"{self.level}/{name}")
+            raw = self._read_bytes(f"{self.array_path}{name}")
             if raw is not None:
                 self.fetched_bytes += len(raw)
                 self.fetched_chunks += 1

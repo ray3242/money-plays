@@ -96,7 +96,7 @@ Flattened texture of the same grid window (`tifxyz-snap render --upsample 8 --wi
 pip install -e ".[dev]" && pytest && ruff check .
 ```
 
-The 12 tests use a small synthetic sheet with known ground truth (recovery of a biased surface, automatic face detection, holes, empty space, I/O, the CLI end to end). They are regression tests only; the usefulness claims above rest on the real-scroll runs.
+The 17 tests use a small synthetic sheet with known ground truth (recovery of a biased surface, automatic face detection, holes, empty and uniform space, I/O including standalone Zarr arrays, the CLI end to end). They are regression tests only; the usefulness claims above rest on the real-scroll runs.
 
 ## Provenance
 

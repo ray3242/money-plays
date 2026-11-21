@@ -30,6 +30,11 @@ def surface_metrics(prof: np.ndarray, offs: np.ndarray, offset: np.ndarray, sigm
     g = np.abs(np.gradient(sm, step, axis=-1))
     zero = np.zeros(m.sum())
     off = offset[m]
+    if not m.any():
+        out = {name: {"edge_strength_mean": None, "intensity_mean": None} for name in ("before", "after")}
+        out["offset"] = {k: None for k in ("median", "mean_abs", "p95_abs", "moved_more_than_1_vox", "moved_more_than_2_vox")}
+        out["vertices"] = 0
+        return out
     out = {}
     for name, o in (("before", zero), ("after", off)):
         out[name] = {
